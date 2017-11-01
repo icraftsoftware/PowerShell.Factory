@@ -1,0 +1,11 @@
+modules/Accounts/
+modules/IIS/
+modules/Media/
+modules/Net/
+modules/Ores/
+modules/Spotlight/
+modules/Tfs/
+modules/Utils/
+
+CreateWorkspace.ps1
+WMIExplorer.ps1
