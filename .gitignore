@@ -1,5 +1,6 @@
 modules/Accounts/
 modules/IIS/
+modules/InvokeBuild/
 modules/Media/
 modules/Net/
 modules/Ores/

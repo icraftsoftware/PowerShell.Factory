@@ -119,6 +119,7 @@ Describe 'Expand-ItemGroup' {
       Context 'When ItemGroups are given by arguments.' {
          Mock Write-Information # avoid cluttering Pester output
          Mock Write-Warning # avoid cluttering Pester output
+         Mock Resolve-Path -MockWith { [PSCustomObject]@{ Path = $Path } }
          It 'Expands an empty ItemGroup.' {
             $itemGroup = @{}
             Expand-ItemGroup -ItemGroup $itemGroup | Should -BeNullOrEmpty
@@ -271,6 +272,7 @@ Describe 'Expand-ItemGroup' {
       Context 'When ItemGroups are given by pipeline.' {
          Mock Write-Information # avoid cluttering Pester output
          Mock Write-Warning # avoid cluttering Pester output
+         Mock Resolve-Path -MockWith { [PSCustomObject]@{ Path = $Path } }
          It 'Expands one ItemGroup.' {
             $itemGroup = @{
                Group1 = @(
@@ -415,24 +417,33 @@ Describe 'Expand-ItemGroup' {
             Assert-MockCalled Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''Orchestrations''.' } -Times 1
          }
       }
+      Context 'Fails when Item.Path is not foumd.' {
+         Mock Write-Information # avoid cluttering Pester output
+         Mock Write-Warning # avoid cluttering Pester output
+         It 'Throws on the first item that is not found.' {
+            $itemGroup = @{ Group1 = @(@{Path = 'Item11'}, @{Path = 'Item12'}) }
+
+            { Expand-ItemGroup -ItemGroup $itemGroup } | Should -Throw -ExpectedMessage "Cannot find path 'C:\Files\fcha\Documents\WindowsPowerShell\modules\ItemGroup\Item11'"
+         }
+      }
    }
 }
 
-Describe 'Trace-ItemGroup' {
+Describe 'Test-ItemGroup' {
    InModuleScope ItemGroup {
       Context 'When ItemGroups are given by arguments' {
          Mock Write-Warning
          It 'Has no duplicate.' {
             $itemGroup = @( @{One = @(@{})}, @{Two = @(@{})} )
 
-            Trace-ItemGroup -ItemGroup $itemGroup -Duplicate
+            Test-ItemGroup -ItemGroup $itemGroup -Duplicate
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Warns about each duplicate item group.' {
             $itemGroup = @( @{One = @(@{})}, @{One = @(@{})} )
 
-            Trace-ItemGroup -ItemGroup $itemGroup -Duplicate
+            Test-ItemGroup -ItemGroup $itemGroup -Duplicate
 
             Assert-MockCalled Write-Warning -Times 1
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
@@ -442,7 +453,7 @@ Describe 'Trace-ItemGroup' {
                @( @{One = @(@{})}, @{Two = @(@{})} )
                @( @{One = @(@{})}, @{Two = @(@{})} )
             )
-            Trace-ItemGroup -ItemGroup $itemGroups -Duplicate
+            Test-ItemGroup -ItemGroup $itemGroups -Duplicate
 
             Assert-MockCalled Write-Warning -Times 2
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
@@ -454,12 +465,12 @@ Describe 'Trace-ItemGroup' {
          It 'Has no duplicate.' {
             $itemGroup = @( @{One = @(@{})}, @{Two = @(@{})} )
 
-            $itemGroup | Trace-ItemGroup -Duplicate
+            $itemGroup | Test-ItemGroup -Duplicate
          }
          It 'Warns about each duplicate item group.' {
             $itemGroup = @( @{One = @(@{})}, @{One = @(@{})} )
 
-            $itemGroup | Trace-ItemGroup -Duplicate
+            $itemGroup | Test-ItemGroup -Duplicate
 
             Assert-MockCalled Write-Warning -Times 1
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
@@ -469,7 +480,7 @@ Describe 'Trace-ItemGroup' {
                @( @{One = @(@{})}, @{Two = @(@{})} )
                @( @{One = @(@{})}, @{Two = @(@{})} )
             )
-            $itemGroups | Trace-ItemGroup -Duplicate
+            $itemGroups | Test-ItemGroup -Duplicate
 
             Assert-MockCalled Write-Warning -Times 2 # has been called only once
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
@@ -645,101 +656,63 @@ Describe 'Resolve-DefaultItem' {
    }
 }
 
-Describe 'Test-Item' {
-   InModuleScope ItemGroup {
-      It 'Is false for $null.' {
-         $null | Test-Item | Should -Be $false
-      }
-      It 'Is false for an empty hashtable.' {
-         @{} | Test-Item | Should -Be $false
-      }
-      It 'Is false for an empty custom object.' {
-         ([pscustomobject]@{}) | Test-Item | Should -Be $false
-      }
-      It 'Is false for an empty array.' {
-         @() | Test-Item | Should -Be $false
-      }
-      It 'Is false for an array of empty hashtables.' {
-         @( @{} , @{} ) | Test-Item | Should -Be $false
-      }
-      It 'Is false for an array of empty custom objects.' {
-         @( ([pscustomobject]@{}) , ([pscustomobject]@{}) ) | Test-Item | Should -Be $false
-      }
-      It 'Is true for a hashtable with property.' {
-         @{x = $null} | Test-Item | Should -Be $true
-      }
-      It 'Is true for a custom object with property.' {
-         ([pscustomobject]@{x = $null}) | Test-Item | Should -Be $true
-      }
-      It 'Is true for an array with one non-empty hashtable.' {
-         @( @{x = $null} , @{} ) | Test-Item | Should -Be $true
-      }
-      It 'Is true for an array with one non-empty custom object.' {
-         @( ([pscustomobject]@{x = $null}) , ([pscustomobject]@{}) ) | Test-Item | Should -Be $true
-      }
-      It 'Accepts arguments of mixed hashtable and custom object items' {
-         Test-Item -Item @( @{x = $null} , ([pscustomobject]@{x = $null}) ) | Should -Be $true
-      }
-   }
-}
-
-Describe 'Trace-Item' {
+Describe 'Test-Item-Duplicate' {
    InModuleScope ItemGroup {
       Context 'When Items are given by arguments' {
          Mock Write-Warning
          It 'Does not trace an empty array.' {
             $item = @()
 
-            Trace-Item -Item $item -Duplicate
+            Test-Item -Item $item -Duplicate
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Does not trace an array of empty arrays.' {
             $items = @( @(), @() )
 
-            Trace-Item -Item $items -Duplicate
+            Test-Item -Item $items -Duplicate
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Does not trace an array of empty hashtables.' {
             $items = @( @{}, @{} )
 
-            Trace-Item -Item $items -Duplicate
+            Test-Item -Item $items -Duplicate
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Does not trace an array of arrays of empty hashtables.' {
             $items = @( @( @{}, @{} ) , @( @{}, @{} ) )
 
-            Trace-Item -Item $items -Duplicate
+            Test-Item -Item $items -Duplicate
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Does not trace an array of empty Items.' {
             $items = @( (ConvertTo-Item @{}) , (ConvertTo-Item @{}) )
 
-            Trace-Item -Item $items -Duplicate
+            Test-Item -Item $items -Duplicate
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Does not trace an array of arrays of empty Items.' {
             $items = @( @( @{}, @{} ) , @( @{}, @{} ) )
 
-            Trace-Item -Item $items -Duplicate
+            Test-Item -Item $items -Duplicate
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Has no duplicate.' {
             $item = @( @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'Three'} )
 
-            Trace-Item -Item $item -Duplicate
+            Test-Item -Item $item -Duplicate
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Warns about each duplicate item in array.' {
             $item = @( @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'Three'} )
 
-            Trace-Item -Item $item -Duplicate
+            Test-Item -Item $item -Duplicate
 
             Assert-MockCalled Write-Warning -Times 2
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'Item ''One'' has been defined multiple times.' } -Times 1
@@ -751,7 +724,7 @@ Describe 'Trace-Item' {
                @( @{Path = 'Two'}, @{Path = 'Three'} )
             )
 
-            Trace-Item -Item $items -Duplicate
+            Test-Item -Item $items -Duplicate
 
             Assert-MockCalled Write-Warning -Times 2
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'Item ''One'' has been defined multiple times.' } -Times 1
@@ -763,21 +736,21 @@ Describe 'Trace-Item' {
          It 'Does not trace an empty array.' {
             $item = @()
 
-            $item | Trace-Item -Duplicate
+            $item | Test-Item -Duplicate
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Has no duplicate.' {
             $item = @( @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'Three'} )
 
-            $item | Trace-Item -Duplicate
+            $item | Test-Item -Duplicate
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Warns about each duplicate item in array.' {
             $item = @( @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'Three'} )
 
-            $item | Trace-Item -Duplicate
+            $item | Test-Item -Duplicate
 
             Assert-MockCalled Write-Warning -Times 2
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'Item ''One'' has been defined multiple times.' } -Times 1
@@ -789,12 +762,50 @@ Describe 'Trace-Item' {
                @( @{Path = 'Two'}, @{Path = 'Three'} )
             )
 
-            $items | Trace-Item -Duplicate
+            $items | Test-Item -Duplicate
 
             Assert-MockCalled Write-Warning -Times 2
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'Item ''One'' has been defined multiple times.' } -Times 1
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'Item ''Two'' has been defined multiple times.' } -Times 1
          }
+      }
+   }
+}
+
+Describe 'Test-Item-IsValid' {
+   InModuleScope ItemGroup {
+      It 'Is false for $null.' {
+         $null | Test-Item -IsValid | Should -Be $false
+      }
+      It 'Is false for an empty hashtable.' {
+         @{} | Test-Item -IsValid | Should -Be $false
+      }
+      It 'Is false for an empty custom object.' {
+         ([pscustomobject]@{}) | Test-Item -IsValid | Should -Be $false
+      }
+      It 'Is false for an empty array.' {
+         @() | Test-Item -IsValid | Should -Be $false
+      }
+      It 'Is false for an array of empty hashtables.' {
+         @( @{} , @{} ) | Test-Item -IsValid | Should -Be $false
+      }
+      It 'Is false for an array of empty custom objects.' {
+         @( ([pscustomobject]@{}) , ([pscustomobject]@{}) ) | Test-Item -IsValid | Should -Be $false
+      }
+      It 'Is true for a hashtable with property.' {
+         @{x = $null} | Test-Item -IsValid | Should -Be $true
+      }
+      It 'Is true for a custom object with property.' {
+         ([pscustomobject]@{x = $null}) | Test-Item -IsValid | Should -Be $true
+      }
+      It 'Is true for an array with one non-empty hashtable.' {
+         @( @{x = $null} , @{} ) | Test-Item -IsValid | Should -Be $true
+      }
+      It 'Is true for an array with one non-empty custom object.' {
+         @( ([pscustomobject]@{x = $null}) , ([pscustomobject]@{}) ) | Test-Item -IsValid | Should -Be $true
+      }
+      It 'Accepts arguments of mixed hashtable and custom object items' {
+         Test-Item -IsValid -Item @( @{x = $null} , ([pscustomobject]@{x = $null}) ) | Should -Be $true
       }
    }
 }

@@ -18,6 +18,19 @@
 
 #region ItemGroup
 
+function Get-AssemblyName {
+   [CmdletBinding()]
+   [OutputType([System.Reflection.AssemblyName[]])]
+   param(
+      [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true)]
+      [psobject[]]
+      $Path
+   )
+   process {
+      $Path | ForEach-Object -Process { $_ } | ForEach-Object -Process { [System.Reflection.AssemblyName]::GetAssemblyName($_) }
+   }
+}
+
 function Compare-ItemGroup {
    [CmdletBinding()]
    [OutputType([PSCustomObject[]])]
@@ -61,8 +74,7 @@ function Import-ItemGroup {
    param(
       [Parameter(Position = 0, Mandatory = $true)]#, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
       [psobject[]]
-      $Paths
-      ,
+      $Paths,
 
       [Parameter(DontShow, ValueFromRemainingArguments = $true)]
       [psobject[]]
@@ -81,9 +93,18 @@ function Import-ItemGroup {
    # $UnboundArguments | gm
    # $UnboundArguments
 
+   begin {
+      $location = Get-Location
+   }
    process {
-      Write-Information -MessageData "Importing ItemGroups from file '$Paths'." -InformationAction Continue
-      $content = Get-Content -Raw -Path $Paths
+      $absolutePath = Resolve-Path -Path $Paths
+      Write-Information -MessageData "Importing ItemGroups from file '$absolutePath'." -InformationAction Continue
+      # make sure current folder for each item group definition file is its containing folder
+      $itemGroupFolderPath = Split-Path -Path $absolutePath -Parent
+      Write-Verbose -Message "Setting location to '$itemGroupFolderPath'."
+      Set-Location -Path $itemGroupFolderPath
+
+      $content = Get-Content -Raw -Path $absolutePath
       # $expectedParameterNames = @( [scriptblock]::Create($content).Ast.ParamBlock.Parameters.Name.VariablePath.UserPath )
       # $arguments = [hashtable]$PSBoundParameters
       # $PSBoundParameters.Keys | Where-Object { $_ -notin $expectedParameterNames } | ForEach-Object { $arguments.Remove($_) }
@@ -94,8 +115,12 @@ function Import-ItemGroup {
       ## TODO enrich hashtable with source file to provide better diagnostics info
 
       # pipe itemGroups to support array of hashtables and not just a single hashtable
-      $itemGroups | ForEach-Object -Process { if ($_ -isnot [hashtable]) { throw "File '$Paths' does not contain valid ItemGroup definitions." } }
+      $itemGroups | ForEach-Object -Process { if ($_ -isnot [hashtable]) { throw "File '$absolutePath' does not contain valid ItemGroup definitions." } }
       $itemGroups
+   }
+   end {
+      Set-Location -Path $location
+      Write-Verbose -Message "Restoring initial location to '$location'."
    }
 }
 
@@ -131,25 +156,25 @@ function Expand-ItemGroup {
       $result = @{}
    }
    process {
-      $ItemGroup | Trace-ItemGroup -Duplicate
+      $ItemGroup | Test-ItemGroup -Duplicate
       $ItemGroup | ForEach-Object -Process { $_ } -PipelineVariable currentItemGroup | Select-Object -ExpandProperty Keys -PipelineVariable itemGroupName | ForEach-Object -Process {
          Write-Information -MessageData "Expanding ItemGroup '$itemGroupName'." -InformationAction Continue
          if ($currentItemGroup.$itemGroupName -isnot [array]) { throw "'$itemGroupName' is expected to be an array." }
          # compute ItemGroup's default item to be merged into every other item
          $defaultItem = Resolve-DefaultItem -ItemGroup $currentItemGroup.$itemGroupName
-         # iterates over $item.Path to flatten vector items, i.e. those whose Path is a list/array of items
+         # iterates over valid non-default items to flatten vector ones, i.e. those whose item.Path is a list/array of items
          $items = @(
             $currentItemGroup.$itemGroupName `
-               | Where-Object -FilterScript { Test-Item $_ } `
+               | Where-Object -FilterScript { Test-Item -Item $_ -IsValid } `
                | Where-Object -FilterScript { $_.Path -ne '*' } -PipelineVariable item `
-               | ForEach-Object -Process { $item.Path } -PipelineVariable path `
+               | ForEach-Object -Process { $item.Path | Resolve-Path -ErrorAction Stop <# will throw if Item is not found #> | Select-Object -ExpandProperty Path } -PipelineVariable path `
                | ForEach-Object -Process { Merge-HashTable -HashTable @{Path = $path}, $item, $defaultItem }
          )
          if ($result.ContainsKey($itemGroupName)) {
             Write-Warning -Message "Items of ItemGroup '$itemGroupName' have been redefined."
          }
          $result.$itemGroupName = @($items | ConvertTo-Item)
-         $result.$itemGroupName | Trace-Item -Duplicate
+         $result.$itemGroupName | Test-Item -Duplicate
       }
    }
    end {
@@ -157,7 +182,7 @@ function Expand-ItemGroup {
    }
 }
 
-function Trace-ItemGroup {
+function Test-ItemGroup {
    [CmdletBinding()]
    [OutputType([void])]
    param(
@@ -165,7 +190,7 @@ function Trace-ItemGroup {
       [hashtable[]]
       $ItemGroup,
 
-      [Parameter(Mandatory = $false)]
+      [Parameter(Mandatory = $true)]
       [switch]
       $Duplicate = $false
    )
@@ -178,9 +203,9 @@ function Trace-ItemGroup {
    end {
       if ($Duplicate) {
          $itemGroupCache.Keys | Group-Object |
-            Where-Object -FilterScript {$_.Count -gt 1} |
+            Where-Object -FilterScript { $_.Count -gt 1 } |
             ForEach-Object -Process { Write-Warning -Message "ItemGroup '$($_.Name)' has been defined multiple times." }
-         $itemGroupCache | ForEach-Object -Process { $_.Values } | Trace-Item -Duplicate:$Duplicate
+         $itemGroupCache | ForEach-Object -Process { $_.Values } | Test-Item -Duplicate:$Duplicate
       }
    }
 }
@@ -209,8 +234,6 @@ function Compare-Item {
    )
    $referenceProperties = @( (?? { $ReferenceItem } { [PSCustomObject]@{} }) | Get-Member -MemberType NoteProperty, ScriptProperty | Select-Object -ExpandProperty Name)
    $differenceProperties = @( (?? { $DifferenceItem } { [PSCustomObject]@{} }) | Get-Member -MemberType NoteProperty, ScriptProperty | Select-Object -ExpandProperty Name)
-   # $properties = $referenceProperties + $differenceProperties | Select-Object -Unique
-   # Compare-Object -ReferenceObject $ReferenceItem -DifferenceObject $DifferenceItem -Property $properties
    $referenceProperties + $differenceProperties | Select-Object -Unique -PipelineVariable key | ForEach-Object -Process {
       $propertyName = if ($Prefix) { "$Prefix.$key" } else { $key }
       if ($referenceProperties.Contains($key) -and !$differenceProperties.Contains($key)) {
@@ -240,8 +263,7 @@ function ConvertTo-Item {
    )
    process {
       @(
-         # filter out empty hashtables
-         $HashTable | Where-Object -FilterScript { $_.Count } | ForEach-Object -Process {
+         $HashTable | Where-Object -FilterScript { $_.Count } <# filter out empty hashtables #> | ForEach-Object -Process {
             $currentHashTable = $_
             $object = New-Object -TypeName PSCustomObject
             $currentHashTable.Keys | ForEach-Object -Process {
@@ -266,42 +288,13 @@ function Resolve-DefaultItem {
       $ItemGroup
    )
    # compute default item, which defines inheritable default properties, from all items whose Path = '*'
-   $ItemGroup | ForEach-Object -Process {$_} | Where-Object -FilterScript { (Test-Item $_) -and $_.Path -eq '*' } | Merge-HashTable -Exclude 'Path' -Force
+   $ItemGroup |
+      ForEach-Object -Process { $_ } |
+      Where-Object -FilterScript { (Test-Item -Item $_ -IsValid) -and $_.Path -eq '*' } |
+      Merge-HashTable -Exclude 'Path' -Force
 }
 
 function Test-Item {
-   [CmdletBinding()]
-   [OutputType([bool])]
-   param(
-      [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true)]
-      [AllowNull()]
-      [AllowEmptyCollection()]
-      [psobject[]]
-      $Item
-   )
-   begin {
-      $isItem = $false
-   }
-   process {
-      $Item | ForEach-Object -Process {$_} -PipelineVariable currentItem | ForEach-Object -Process {
-         if (-not $isItem) {
-            if ($currentItem -eq $null) {
-               $isItem = $false
-            } elseif ($currentItem -is [hashtable]) {
-               $isItem = $currentItem.Count -gt 0
-            } elseif ($currentItem -is [PSCustomObject]) {
-               $isItem = $currentItem | Get-Member -MemberType NoteProperty, ScriptProperty | Test-Any
-            }
-         }
-      }
-   }
-   end {
-      $isItem
-   }
-}
-
-
-function Trace-Item {
    [CmdletBinding()]
    [OutputType([void])]
    param(
@@ -311,27 +304,48 @@ function Trace-Item {
       [psobject[]]
       $Item,
 
-      [Parameter(Mandatory = $false)]
+      [Parameter(Mandatory = $true, ParameterSetName = 'duplicate')]
       [switch]
-      $Duplicate = $false
+      $Duplicate = $false,
+
+      [Parameter(Mandatory = $true, ParameterSetName = 'valid')]
+      [switch]
+      $IsValid = $false
    )
    begin {
       $itemCache = @()
+      $isItem = $false
    }
    process {
       if ($Duplicate) {
          $itemCache += @(
             $Item |
-               Where-Object -FilterScript { Test-Item $_ } |
-               ForEach-Object -Process {$_}
+               Where-Object -FilterScript { Test-Item -Item $_ -IsValid } |
+               ForEach-Object -Process { $_ }
          )
+      }
+      if ($IsValid) {
+         $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | ForEach-Object -Process {
+            if (-not $isItem) {
+               if ($currentItem -eq $null) {
+                  $isItem = $false
+               } elseif ($currentItem -is [hashtable]) {
+                  $isItem = $currentItem.Count -gt 0
+               } elseif ($currentItem -is [PSCustomObject]) {
+                  $isItem = $currentItem | Get-Member -MemberType NoteProperty, ScriptProperty | Test-Any
+               }
+            }
+         }
       }
    }
    end {
       if ($Duplicate) {
-         $itemCache | Group-Object -Property {$_.Path} |
-            Where-Object -FilterScript {$_.Count -gt 1} |
+         $itemCache | Group-Object -Property { $_.Path } |
+            Where-Object -FilterScript { $_.Count -gt 1 } |
             ForEach-Object -Process { Write-Warning -Message "Item '$($_.Name)' has been defined multiple times." }
+      }
+      if ($IsValid) {
+         $isItem
       }
    }
 }
