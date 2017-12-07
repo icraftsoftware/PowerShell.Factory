@@ -421,9 +421,9 @@ Describe 'Expand-ItemGroup' {
          Mock Write-Information # avoid cluttering Pester output
          Mock Write-Warning # avoid cluttering Pester output
          It 'Throws on the first item that is not found.' {
-            $itemGroup = @{ Group1 = @(@{Path = 'Item11'}, @{Path = 'Item12'}) }
+            $itemGroup = @{ Group1 = @(@{Path = 'not-found-item-1.dll'}, @{Path = 'not-found-item-2.exe'}) }
 
-            { Expand-ItemGroup -ItemGroup $itemGroup } | Should -Throw -ExpectedMessage "Cannot find path 'C:\Files\fcha\Documents\WindowsPowerShell\modules\ItemGroup\Item11'"
+            { Expand-ItemGroup -ItemGroup $itemGroup } | Should -Throw -ExpectedMessage 'not-found-item-1.dll' -ErrorId 'PathNotFound,Microsoft.PowerShell.Commands.ResolvePathCommand'
          }
       }
    }
