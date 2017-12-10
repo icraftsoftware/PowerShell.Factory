@@ -119,7 +119,7 @@ Describe 'Expand-ItemGroup' {
       Context 'When ItemGroups are given by arguments.' {
          Mock Write-Information # avoid cluttering Pester output
          Mock Write-Warning # avoid cluttering Pester output
-         Mock Resolve-Path -MockWith { [PSCustomObject]@{ Path = $Path } }
+         Mock Resolve-Path -MockWith { [PSCustomObject]@{ ProviderPath = $Path } }
          It 'Expands an empty ItemGroup.' {
             $itemGroup = @{}
             Expand-ItemGroup -ItemGroup $itemGroup | Should -BeNullOrEmpty
@@ -272,7 +272,7 @@ Describe 'Expand-ItemGroup' {
       Context 'When ItemGroups are given by pipeline.' {
          Mock Write-Information # avoid cluttering Pester output
          Mock Write-Warning # avoid cluttering Pester output
-         Mock Resolve-Path -MockWith { [PSCustomObject]@{ Path = $Path } }
+         Mock Resolve-Path -MockWith { [PSCustomObject]@{ ProviderPath = $Path } }
          It 'Expands one ItemGroup.' {
             $itemGroup = @{
                Group1 = @(

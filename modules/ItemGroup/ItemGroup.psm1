@@ -18,19 +18,6 @@
 
 #region ItemGroup
 
-function Get-AssemblyName {
-   [CmdletBinding()]
-   [OutputType([System.Reflection.AssemblyName[]])]
-   param(
-      [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true)]
-      [psobject[]]
-      $Path
-   )
-   process {
-      $Path | ForEach-Object -Process { $_ } | ForEach-Object -Process { [System.Reflection.AssemblyName]::GetAssemblyName($_) }
-   }
-}
-
 function Compare-ItemGroup {
    [CmdletBinding()]
    [OutputType([PSCustomObject[]])]
@@ -74,7 +61,7 @@ function Import-ItemGroup {
    param(
       [Parameter(Position = 0, Mandatory = $true)]#, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
       [psobject[]]
-      $Paths,
+      $Path,
 
       [Parameter(DontShow, ValueFromRemainingArguments = $true)]
       [psobject[]]
@@ -97,7 +84,7 @@ function Import-ItemGroup {
       $location = Get-Location
    }
    process {
-      $absolutePath = Resolve-Path -Path $Paths
+      $absolutePath = Resolve-Path -Path $Path
       Write-Information -MessageData "Importing ItemGroups from file '$absolutePath'." -InformationAction Continue
       # make sure current folder for each item group definition file is its containing folder
       $itemGroupFolderPath = Split-Path -Path $absolutePath -Parent
@@ -167,7 +154,7 @@ function Expand-ItemGroup {
             $currentItemGroup.$itemGroupName `
                | Where-Object -FilterScript { Test-Item -Item $_ -IsValid } `
                | Where-Object -FilterScript { $_.Path -ne '*' } -PipelineVariable item `
-               | ForEach-Object -Process { $item.Path | Resolve-Path -ErrorAction Stop <# will throw if Item is not found #> | Select-Object -ExpandProperty Path } -PipelineVariable path `
+               | ForEach-Object -Process { $item.Path | Resolve-Path -ErrorAction Stop <# will throw if Item is not found #> | Select-Object -ExpandProperty ProviderPath } -PipelineVariable path `
                | ForEach-Object -Process { Merge-HashTable -HashTable @{Path = $path}, $item, $defaultItem }
          )
          if ($result.ContainsKey($itemGroupName)) {
@@ -356,4 +343,4 @@ function Test-Item {
  # Main
  #>
 
-# Export-ModuleMember -Function Import-ItemGroups
+Export-ModuleMember -Function Import-ItemGroup, Expand-ItemGroup
