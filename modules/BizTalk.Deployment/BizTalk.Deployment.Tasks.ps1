@@ -16,150 +16,151 @@
 
 #endregion
 
-# https://docs.microsoft.com/en-us/biztalk/core/btstask-command-line-reference
+use "$(Join-path -Path (Split-Path -Parent $PSCommandPath) -ChildPath 'Tools')" GacUtil
+use "$($env:BTSINSTALLPATH)" BTSTask
+use 'Framework\v4.0.30319' InstallUtil
 
-task Deploy Deploy-BizTalkApplication, Deploy-BizTalkArtifacts
+task Deploy Undeploy, Deploy-BizTalkApplication, Deploy-BizTalkArtifacts
 
-task Undeploy Undeploy-BizTalkArtifacts, Undeploy-BizTalkApplication
+task Patch { $Script:SkipMgmtDbDeployment = $true }, Deploy-BizTalkArtifacts
 
-task Deploy-BizTalkArtifacts Undeploy-BizTalkArtifacts, Deploy-Schemas, Deploy-Transforms, Deploy-Assemblies, Deploy-Components, Deploy-PipelineComponents, Deploy-Pipelines, Deploy-Orchestrations
+task Undeploy -If { -not $SkipUndeploy } Undeploy-BizTalkArtifacts, Undeploy-BizTalkApplication
 
-task Undeploy-BizTalkArtifacts Undeploy-Orchestrations, Undeploy-Pipelines, Undeploy-PipelineComponents, Undeploy-Components, Undeploy-Assemblies, Undeploy-Transforms, Undeploy-Schemas
+task Deploy-BizTalkArtifacts `
+   Deploy-Schemas, `
+   Deploy-Transforms, `
+   Deploy-Assemblies, `
+   Deploy-Components, `
+   Deploy-PipelineComponents, `
+   Deploy-Pipelines, `
+   Deploy-Orchestrations
 
-# task Create-BizTalkApplication -If {-not (Test-Application $ApplicationName)} {
-task Deploy-BizTalkApplication Undeploy-BizTalkApplication, {
+task Undeploy-BizTalkArtifacts `
+   Undeploy-Orchestrations, `
+   Undeploy-Pipelines, `
+   Undeploy-PipelineComponents, `
+   Undeploy-Components, `
+   Undeploy-Assemblies, `
+   Undeploy-Transforms, `
+   Undeploy-Schemas
+
+task Deploy-BizTalkApplication -If { -not (Test-Application $ApplicationName) } {
    Write-Build DarkGreen "Adding application '$ApplicationName'"
-   exec { BTSTask AddApp -ApplicationName:"$ApplicationName" -Description:"$ApplicationDescription" | Out-Null }
+   exec { BTSTask AddApp -ApplicationName:"$ApplicationName" -Description:"$ApplicationDescription" }
    # TODO add app references
    # <AddAppReference ApplicationName="$(BizTalkAppName)" AppsToReference="@(AppsToReference)" Condition="%(Identity) == %(Identity) and '@(AppsToReference)' != ''" />
 }
-task Undeploy-BizTalkApplication -If { -not $SkipUndeploy -and (Test-Application -Name $ApplicationName) } Stop-Application, {
+task Undeploy-BizTalkApplication -If { Test-Application -Name $ApplicationName } Stop-Application, {
    Write-Build DarkGreen "Removing application '$ApplicationName'"
-   exec { BTSTask RemoveApp -ApplicationName:"$ApplicationName" | Out-Null }
+   exec { BTSTask RemoveApp -ApplicationName:"$ApplicationName" }
 }
 task Stop-Application {
    Stop-Application -Name $ApplicationName -TerminateServiceInstances:$TerminateServiceInstances
 }
 
+# Synopsis: Add assemblies to gac
 task Deploy-Assemblies {
-   $ItemGroups.Assemblies.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
-      exec { GacUtil /f /i "$_" | Out-Null }
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      Add-ToGac -Path $_.Path
    }
 }
-task Undeploy-Assemblies -If { -not $SkipUndeploy } {
-   $ItemGroups.Assemblies.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
-      exec { GacUtil /u ((Get-AssemblyName -Path $_).Name) | Out-Null }
+# Synopsis: Remove assemblies from gac
+task Undeploy-Assemblies {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      Remove-FromGac -Path $_.Path
    }
 }
 
 task Deploy-Components Undeploy-Components, {
-   $ItemGroups.Components.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
-      exec { GacUtil /f /i "$_" | Out-Null }
-      if (-not $SkipInstallUtil) {
-         exec { InstallUtil /ShowCallStack "$_" }
-      }
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      Add-ToGac -Path $_.Path
+      Install-Component -Path $_.Path -SkipInstallUtil:$SkipInstallUtil
    }
 }
-task Undeploy-Components -If { -not $SkipUndeploy } {
-   $ItemGroups.Components.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
-      exec { GacUtil /u ((Get-AssemblyName -Path $_).Name) | Out-Null }
-      if (-not $SkipInstallUtil) {
-         exec { InstallUtil /u /ShowCallStack "$_" }
-      }
+task Undeploy-Components {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      Uninstall-Component -Path $_.Path -SkipInstallUtil:$SkipInstallUtil
+      Remove-FromGac -Path $_.Path
    }
 }
 
-task Deploy-Pipelines Undeploy-Pipelines, {
-   $ItemGroups.Pipelines.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
+task Deploy-Pipelines {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
       if ($SkipMgmtDbDeployment) {
-         exec { GacUtil /f /i "$_" | Out-Null }
+         Add-ToGac -Path $_.Path
       }
       else {
-         exec { BTSTask AddResource -ApplicationName:"$ApplicationName" -Type:BizTalkAssembly -Overwrite -Source:"$_" -Options:'GacOnAdd,GacOnImport,GacOnInstall' }
+         Add-BizTalkResource -Path $_.Path -ApplicationName $ApplicationName
       }
    }
 }
-task Undeploy-Pipelines -If { -not $SkipUndeploy } {
-   $ItemGroups.Pipelines.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
-      exec { GacUtil /u ((Get-AssemblyName -Path $_).Name) | Out-Null }
+task Undeploy-Pipelines {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      Remove-FromGac -Path $_.Path
    }
 }
 
 task Deploy-PipelineComponents {
-   $ItemGroups.PipelineComponents.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
-      Copy-Item -Path "$_" -Destination "$(Join-Path -Path $env:BTSINSTALLPATH -ChildPath 'Pipeline Components')"
-      exec { GacUtil /f /i "$_" | Out-Null }
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      Copy-Item -Path $_.Path -Destination "$(Join-Path -Path $env:BTSINSTALLPATH -ChildPath 'Pipeline Components')" -Force
+      Add-ToGac -Path $_.Path
    }
 }
-task Undeploy-PipelineComponents -If { -not $SkipUndeploy } Recycle-AppPool, {
-   $ItemGroups.PipelineComponents.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
-      $pc = [System.IO.Path]::Combine($env:BTSINSTALLPATH, 'Pipeline Components', [System.IO.Path]::GetFileName($_))
+task Undeploy-PipelineComponents Recycle-AppPool, {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      $pc = [System.IO.Path]::Combine($env:BTSINSTALLPATH, 'Pipeline Components', [System.IO.Path]::GetFileName($_.Path))
       if (Test-Path -Path $pc) {
-         Remove-Item -Path $pc
+         Remove-Item -Path $pc -Force
       }
-      exec { GacUtil /u ((Get-AssemblyName -Path $_).Name) | Out-Null }
+      Remove-FromGac -Path $_.Path
    }
 }
 
-task Deploy-Orchestrations Undeploy-Orchestrations, {
-   $ItemGroups.Orchestrations.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
+task Deploy-Orchestrations {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
       if ($SkipMgmtDbDeployment) {
-         exec { GacUtil /f /i "$_" | Out-Null }
+         Add-ToGac -Path $_.Path
       }
       else {
-         exec { BTSTask AddResource -ApplicationName:"$ApplicationName" -Type:BizTalkAssembly -Overwrite -Source:"$_" -Options:'GacOnAdd,GacOnImport,GacOnInstall' }
+         Add-BizTalkResource -Path $_.Path -ApplicationName $ApplicationName
       }
    }
 }
-task Undeploy-Orchestrations -If { -not $SkipUndeploy } {
-   $ItemGroups.Orchestrations.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
-      exec { GacUtil /u ((Get-AssemblyName -Path $_).Name) | Out-Null }
+task Undeploy-Orchestrations {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      Remove-FromGac -Path $_.Path
    }
 }
 
-task Deploy-Schemas Undeploy-Schemas, {
-   $ItemGroups.Schemas.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
+task Deploy-Schemas {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
       if ($SkipMgmtDbDeployment) {
-         exec { GacUtil /f /i "$_" | Out-Null }
+         Add-ToGac -Path $_.Path
       }
       else {
-         exec { BTSTask AddResource -ApplicationName:"$ApplicationName" -Type:BizTalkAssembly -Overwrite -Source:"$_" -Options:'GacOnAdd,GacOnImport,GacOnInstall' }
+         Add-BizTalkResource -Path $_.Path -ApplicationName $ApplicationName
       }
    }
 }
-task Undeploy-Schemas -If { -not $SkipUndeploy } {
-   $ItemGroups.Schemas.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
-      exec { GacUtil /u ((Get-AssemblyName -Path $_).Name) | Out-Null }
+task Undeploy-Schemas {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      Remove-FromGac -Path $_.Path
    }
 }
 
-task Deploy-Transforms Undeploy-Transforms, {
-   $ItemGroups.Transforms.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
+task Deploy-Transforms {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
       if ($SkipMgmtDbDeployment) {
-         exec { GacUtil /f /i "$_" | Out-Null }
+         Add-ToGac -Path $_.Path
       }
       else {
-         exec { BTSTask AddResource -ApplicationName:"$ApplicationName" -Type:BizTalkAssembly -Overwrite -Source:"$_" -Options:'GacOnAdd,GacOnImport,GacOnInstall' }
+         Add-BizTalkResource -Path $_.Path -ApplicationName $ApplicationName
       }
    }
 }
-task Undeploy-Transforms -If { -not $SkipUndeploy } {
-   $ItemGroups.Transforms.Path | ForEach-Object -Process {
-      Write-Build DarkGreen $_
-      exec { GacUtil /u ((Get-AssemblyName -Path $_).Name) | Out-Null }
+task Undeploy-Transforms {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      Remove-FromGac -Path $_.Path
    }
 }
 
@@ -167,4 +168,99 @@ task Recycle-AppPool {
    # see cmdlet Restart-WebAppPool
    # <Exec Command="iisreset.exe /noforce /restart /timeout:$(IisResetTime)" Condition="'@(IISAppPool)' == ''" />
    # <RecycleAppPool Items="@(IISAppPool)" Condition="'@(IISAppPool)' != ''" />
+}
+
+function Get-TaskItemGroup {
+   [CmdletBinding()]
+   [OutputType([PSCustomObject[]])]
+   param(
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNull()]
+      [psobject]
+      $Task
+   )
+   $object = $Task.Name -split '-' | Select-Object -Skip 1
+   $ItemGroups.$object
+}
+
+function Add-BizTalkResource {
+   [CmdletBinding()]
+   [OutputType([void])]
+   param(
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $Path,
+
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $ApplicationName
+   )
+   # https://docs.microsoft.com/en-us/biztalk/core/btstask-command-line-reference
+   Write-Build DarkGreen $Path
+   exec { BTSTask AddResource -ApplicationName:"$ApplicationName" -Type:BizTalkAssembly -Overwrite -Source:"$Path" -Options:'GacOnAdd,GacOnImport,GacOnInstall' }
+}
+
+function Add-ToGac {
+   [CmdletBinding()]
+   [OutputType([void])]
+   param(
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $Path
+   )
+   Write-Build DarkGreen $Path
+   exec { GacUtil /f /i "$Path" }
+}
+function Remove-FromGac {
+   [CmdletBinding()]
+   [OutputType([void])]
+   param(
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $Path
+   )
+   Write-Build DarkGreen $Path
+   $name = Get-AssemblyName -Path $Path -Name
+   exec { GacUtil /u "$name" }
+}
+
+function Install-Component {
+   [CmdletBinding()]
+   [OutputType([void])]
+   param(
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $Path,
+
+      [Parameter(Mandatory = $false)]
+      [switch]
+      $SkipInstallUtil
+   )
+   if (-not $SkipInstallUtil) {
+      Write-Build DarkGreen $Path
+      exec { InstallUtil /ShowCallStack "$Path" }
+   }
+}
+function Uninstall-Component {
+   [CmdletBinding()]
+   [OutputType([void])]
+   param(
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $Path,
+
+      [Parameter(Mandatory = $false)]
+      [switch]
+      $SkipInstallUtil
+   )
+   if (-not $SkipInstallUtil) {
+      Write-Build DarkGreen $Path
+      exec { InstallUtil /u /ShowCallStack "$Path" }
+   }
 }

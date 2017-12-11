@@ -1,14 +1,33 @@
 function Get-AssemblyName {
    [CmdletBinding()]
-   [OutputType([System.Reflection.AssemblyName[]])]
+   [OutputType([psobject[]])]
    param(
       [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true)]
       [ValidateNotNull()]
       [psobject[]]
-      $Path
+      $Path,
+
+      [Parameter(Mandatory = $false)]
+      [switch]
+      $Name,
+
+      [Parameter(Mandatory = $false)]
+      [switch]
+      $FullName
    )
    process {
-      $Path | ForEach-Object -Process { $_ } | ForEach-Object -Process { [System.Reflection.AssemblyName]::GetAssemblyName($_) }
+      $Path | ForEach-Object -Process { $_ } | ForEach-Object -Process {
+         $assemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($_)
+         if ($Name) {
+            $assemblyName.Name
+         }
+         elseif ($FullName) {
+            $assemblyName.$FullName
+         }
+         else {
+            $assemblyName
+         }
+      }
    }
 }
 

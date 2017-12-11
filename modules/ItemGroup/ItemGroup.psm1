@@ -34,18 +34,22 @@ function Compare-ItemGroup {
       if ($ReferenceItemGroup.ContainsKey($key) -and !$DifferenceItemGroup.ContainsKey($key)) {
          [PSCustomObject]@{Key = $key ; ReferenceValue = $ReferenceItemGroup.$key ; SideIndicator = '<' ; DifferenceValue = $null} | Tee-Object -Variable difference
          Write-Verbose -Message $difference
-      } elseif (!$ReferenceItemGroup.ContainsKey($key) -and $DifferenceItemGroup.ContainsKey($key)) {
+      }
+      elseif (!$ReferenceItemGroup.ContainsKey($key) -and $DifferenceItemGroup.ContainsKey($key)) {
          [PSCustomObject]@{Key = $key ; ReferenceValue = $null ; SideIndicator = '>' ; DifferenceValue = $DifferenceItemGroup.$key} | Tee-Object -Variable difference
          Write-Verbose -Message $difference
-      } else {
+      }
+      else {
          $referenceItems, $differenceItems = @($ReferenceItemGroup.$key), @($DifferenceItemGroup.$key)
          for ($i = 0; $i -lt [math]::Max($referenceItems.Count, $differenceItems.Count); $i++) {
             if ($i -lt $referenceItems.Count -and $i -lt $differenceItems.Count) {
                Compare-Item -ReferenceItem $referenceItems[$i] -DifferenceItem $differenceItems[$i] -Prefix ('{0}[{1}]' -f $key, $i)
-            } elseif ($i -lt $referenceItems.Count) {
+            }
+            elseif ($i -lt $referenceItems.Count) {
                [PSCustomObject]@{Key = "$key[$i]" ; ReferenceValue = $referenceItems[$i] ; SideIndicator = '<' ; DifferenceValue = $null} | Tee-Object -Variable difference
                Write-Verbose -Message $difference
-            } else {
+            }
+            else {
                [PSCustomObject]@{Key = "$key[$i]" ; ReferenceValue = $null ; SideIndicator = '>' ; DifferenceValue = $differenceItems[$i]} | Tee-Object -Variable difference
                Write-Verbose -Message $difference
             }
@@ -153,7 +157,7 @@ function Expand-ItemGroup {
          $items = @(
             $currentItemGroup.$itemGroupName `
                | Where-Object -FilterScript { Test-Item -Item $_ -IsValid } `
-               | Where-Object -FilterScript { $_.Path -ne '*' } -PipelineVariable item `
+               | Where-Object -FilterScript { $_.Path -ne '*' -and ($_.Condition -eq $null -or $_.Condition) } -PipelineVariable item `
                | ForEach-Object -Process { $item.Path | Resolve-Path -ErrorAction Stop <# will throw if Item is not found #> | Select-Object -ExpandProperty ProviderPath } -PipelineVariable path `
                | ForEach-Object -Process { Merge-HashTable -HashTable @{Path = $path}, $item, $defaultItem }
          )
@@ -226,10 +230,12 @@ function Compare-Item {
       if ($referenceProperties.Contains($key) -and !$differenceProperties.Contains($key)) {
          [PSCustomObject]@{Key = $propertyName ; ReferenceValue = $ReferenceItem.$key ; SideIndicator = '<' ; DifferenceValue = $null} | Tee-Object -Variable difference
          Write-Verbose -Message $difference
-      } elseif (!$referenceProperties.Contains($key) -and $differenceProperties.Contains($key)) {
+      }
+      elseif (!$referenceProperties.Contains($key) -and $differenceProperties.Contains($key)) {
          [PSCustomObject]@{Key = $propertyName ; ReferenceValue = $null ; SideIndicator = '>' ; DifferenceValue = $DifferenceItem.$key} | Tee-Object -Variable difference
          Write-Verbose -Message $difference
-      } else {
+      }
+      else {
          $referenceValue, $differenceValue = $ReferenceItem.$key, $DifferenceItem.$key
          if ($referenceValue -ne $differenceValue) {
             [PSCustomObject]@{Key = $propertyName ; ReferenceValue = $referenceValue ; SideIndicator = '<>' ; DifferenceValue = $differenceValue} | Tee-Object -Variable difference
@@ -256,7 +262,8 @@ function ConvertTo-Item {
             $currentHashTable.Keys | ForEach-Object -Process {
                if ($currentHashTable.$_ -is [ScriptBlock]) {
                   Add-Member -InputObject $object -MemberType ScriptProperty -Name $_ -Value $currentHashTable.$_
-               } else {
+               }
+               else {
                   Add-Member -InputObject $object -MemberType NoteProperty -Name $_ -Value $currentHashTable.$_
                }
             }
@@ -316,9 +323,11 @@ function Test-Item {
             if (-not $isItem) {
                if ($currentItem -eq $null) {
                   $isItem = $false
-               } elseif ($currentItem -is [hashtable]) {
+               }
+               elseif ($currentItem -is [hashtable]) {
                   $isItem = $currentItem.Count -gt 0
-               } elseif ($currentItem -is [PSCustomObject]) {
+               }
+               elseif ($currentItem -is [PSCustomObject]) {
                   $isItem = $currentItem | Get-Member -MemberType NoteProperty, ScriptProperty | Test-Any
                }
             }
