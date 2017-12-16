@@ -16,8 +16,8 @@
 
 #endregion
 
-use "$(Join-path -Path (Split-Path -Parent $PSCommandPath) -ChildPath 'Tools')" GacUtil
-use "$($env:BTSINSTALLPATH)" BTSTask
+use (Join-path -Path $PSScriptRoot -ChildPath Tools) GacUtil
+use ($env:BTSINSTALLPATH) BTSTask
 use 'Framework\v4.0.30319' InstallUtil
 
 task Deploy Undeploy, Deploy-BizTalkApplication, Deploy-BizTalkArtifacts
@@ -33,7 +33,8 @@ task Deploy-BizTalkArtifacts `
    Deploy-Components, `
    Deploy-PipelineComponents, `
    Deploy-Pipelines, `
-   Deploy-Orchestrations
+   Deploy-Orchestrations, `
+   Deploy-Bindings
 
 task Undeploy-BizTalkArtifacts `
    Undeploy-Orchestrations, `
@@ -70,6 +71,25 @@ task Undeploy-Assemblies {
       Remove-FromGac -Path $_.Path
    }
 }
+
+task Deploy-Bindings Import-Bindings, Install-FileAdapterPaths, Initialize-BizTalkServices
+
+task Import-Bindings Expand-Bindings, {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      Import-Bindings -Path "$($_.Path).xml" -ApplicationName $ApplicationName
+   }
+}
+task Expand-Bindings {
+   Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
+      Expand-Bindings -Path $_.Path `
+         -TargetEnvironment $TargetEnvironment `
+         -BindingFilePath "$($_.Path).xml" `
+         -EnvironmentSettingOverridesRootPath $Item.EnvironmentSettingOverridesRootPath `
+         -AssemblyProbingPaths $Item.AssemblyProbingPaths
+   }
+}
+task Install-FileAdapterPaths {}
+task Initialize-BizTalkServices {}
 
 task Deploy-Components Undeploy-Components, {
    Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
@@ -202,30 +222,57 @@ function Add-BizTalkResource {
    exec { BTSTask AddResource -ApplicationName:"$ApplicationName" -Type:BizTalkAssembly -Overwrite -Source:"$Path" -Options:'GacOnAdd,GacOnImport,GacOnInstall' }
 }
 
-function Add-ToGac {
+function Expand-Bindings {
    [CmdletBinding()]
    [OutputType([void])]
    param(
       [Parameter(Mandatory = $true)]
       [ValidateNotNullOrEmpty()]
       [string]
-      $Path
+      $Path,
+
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $TargetEnvironment,
+
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $BindingFilePath,
+
+      [Parameter(Mandatory = $false)]
+      [AllowEmptyString()]
+      [string]
+      $EnvironmentSettingOverridesRootPath,
+
+      [Parameter(Mandatory = $false)]
+      [AllowEmptyCollection()]
+      [string[]]
+      $AssemblyProbingPaths
    )
    Write-Build DarkGreen $Path
-   exec { GacUtil /f /i "$Path" }
+   exec { InstallUtil /ShowCallStack /TargetEnvironment=$TargetEnvironment /BindingFilePath="$BindingFilePath" /EnvironmentSettingOverridesRootPath="$EnvironmentSettingOverridesRootPath" /AssemblyProbingPaths="$($AssemblyProbingPaths -join ';')" "$Path" }
 }
-function Remove-FromGac {
+
+function Import-Bindings {
    [CmdletBinding()]
    [OutputType([void])]
    param(
       [Parameter(Mandatory = $true)]
       [ValidateNotNullOrEmpty()]
       [string]
-      $Path
+      $Path,
+
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $ApplicationName
    )
+   # https://docs.microsoft.com/en-us/biztalk/core/btstask-command-line-reference
    Write-Build DarkGreen $Path
-   $name = Get-AssemblyName -Path $Path -Name
-   exec { GacUtil /u "$name" }
+   exec { BTSTask AddResource -ApplicationName:"$ApplicationName" -Type:BizTalkBinding -Overwrite -Source:"$Path" }
+   exec { BTSTask ImportBindings -ApplicationName:"$ApplicationName" -Source:"$Path" }
 }
 
 function Install-Component {
@@ -261,6 +308,32 @@ function Uninstall-Component {
    )
    if (-not $SkipInstallUtil) {
       Write-Build DarkGreen $Path
-      exec { InstallUtil /u /ShowCallStack "$Path" }
+      exec { InstallUtil /uninstall /ShowCallStack "$Path" }
    }
+}
+
+function Add-ToGac {
+   [CmdletBinding()]
+   [OutputType([void])]
+   param(
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $Path
+   )
+   Write-Build DarkGreen $Path
+   exec { GacUtil /f /i "$Path" }
+}
+function Remove-FromGac {
+   [CmdletBinding()]
+   [OutputType([void])]
+   param(
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $Path
+   )
+   Write-Build DarkGreen $Path
+   $name = Get-AssemblyName -Path $Path -Name
+   exec { GacUtil /u "$name" }
 }

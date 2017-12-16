@@ -63,27 +63,15 @@ function Import-ItemGroup {
    [CmdletBinding()]
    [OutputType([hashtable])]
    param(
-      [Parameter(Position = 0, Mandatory = $true)]#, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+      [Parameter(Position = 0, Mandatory = $true)]
       [psobject[]]
-      $Path,
-
-      [Parameter(DontShow, ValueFromRemainingArguments = $true)]
-      [psobject[]]
-      $UnboundArguments
+      $Path
    )
-
-   # TODO dynamic arguments and support completion of the ones defined in the param sectionof the file located at $path
-
-   # https://www.google.com/search?newwindow=1&safe=active&pws=0&gl=us&q=powershell+use+unbound+parameters+to+call+another+command&oq=powershell+use+unbound+parameters+to+call+another+command
-   # https://stackoverflow.com/questions/4702406/how-to-pass-the-argument-line-of-one-powershell-function-to-another
-   # https://stackoverflow.com/questions/24984483/pass-an-unspecified-set-of-parameters-into-a-function-and-thru-to-a-cmdlet
-   # https://stackoverflow.com/questions/37709429/can-you-combine-cmdletbinding-with-unbound-parameters
-   # https://4sysops.com/archives/finding-function-default-parameters-with-powershell-ast-when-working-with-psboundparameters/
-
-   #https://stackoverflow.com/questions/27764394/get-valuefromremainingarguments-as-an-hashtable
-   # $UnboundArguments | gm
-   # $UnboundArguments
-
+   dynamicparam {
+      $source = Get-Content -Raw -Path $Path
+      $scriptBlock = [scriptblock]::Create($source)
+      Convert-ScriptBlockParametersToDynamicParameters -ScriptBlock $scriptBlock
+   }
    begin {
       $location = Get-Location
    }
@@ -95,16 +83,8 @@ function Import-ItemGroup {
       Write-Verbose -Message "Setting location to '$itemGroupFolderPath'."
       Set-Location -Path $itemGroupFolderPath
 
-      $content = Get-Content -Raw -Path $absolutePath
-      # $expectedParameterNames = @( [scriptblock]::Create($content).Ast.ParamBlock.Parameters.Name.VariablePath.UserPath )
-      # $arguments = [hashtable]$PSBoundParameters
-      # $PSBoundParameters.Keys | Where-Object { $_ -notin $expectedParameterNames } | ForEach-Object { $arguments.Remove($_) }
-      # $block = [scriptblock]::Create(".{$content} $(&{$args} @arguments)")
-      $block = [scriptblock]::Create(".{$content} $(&{$args} @UnboundArguments)")
-      $itemGroups = Invoke-Command -ScriptBlock $block
-
+      $itemGroups = Invoke-ScriptBlock -ScriptBlock $scriptBlock -Parameters $PSBoundParameters
       ## TODO enrich hashtable with source file to provide better diagnostics info
-
       # pipe itemGroups to support array of hashtables and not just a single hashtable
       $itemGroups | ForEach-Object -Process { if ($_ -isnot [hashtable]) { throw "File '$absolutePath' does not contain valid ItemGroup definitions." } }
       $itemGroups

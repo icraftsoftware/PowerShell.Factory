@@ -104,6 +104,84 @@ Describe 'Compare-Hashtable' {
    }
 }
 
+Describe 'Convert-ParamBlockAstToDynamicParameters' {
+   InModuleScope Psx {
+      It 'Converts simple parameters.' {
+         $sb = [scriptblock]::Create(@'
+[CmdletBinding()]
+param(
+   [string]
+   $Configuration = 'Debug'
+)
+'@)
+         $dp = Convert-ParamBlockAstToDynamicParameters -ParamBlock $sb.Ast.ParamBlock
+
+         $dp | Should -Not -BeNullOrEmpty
+         $dp | Should -BeOfType [System.Management.Automation.RuntimeDefinedParameterDictionary]
+         $dp.Count | Should -BeExactly 1
+         $dp.Configuration | Should -BeOfType [System.Management.Automation.RuntimeDefinedParameter]
+         $dp.Configuration.Attributes | Should -BeNullOrEmpty
+         $dp.Configuration.ParameterType.UnderlyingSystemType | Should -BeExactly ([string].UnderlyingSystemType)
+         $dp.Configuration.Value | Should -BeNullOrEmpty
+      }
+      It 'Converts ParameterAttribute.' {
+         $sb = [scriptblock]::Create(@'
+[CmdletBinding()]
+param(
+   [Parameter(Mandatory = $false, HelpMessage = 'File Layout Configuration')]
+   [string]
+   $Configuration = 'Debug'
+)
+'@)
+         $dp = Convert-ParamBlockAstToDynamicParameters -ParamBlock $sb.Ast.ParamBlock
+
+         $dp.Count | Should -BeExactly 1
+         $dp.Configuration | Should -BeOfType [System.Management.Automation.RuntimeDefinedParameter]
+         $dp.Configuration.Attributes | Should -Not -BeNullOrEmpty
+         $dp.Configuration.Attributes.Count | Should -BeExactly 1
+         $dp.Configuration.Attributes[0] | Should -BeOfType [System.Management.Automation.ParameterAttribute]
+         $dp.Configuration.Attributes[0].Mandatory | Should -Be $false
+         $dp.Configuration.Attributes[0].HelpMessage | Should -BeExactly 'File Layout Configuration'
+         $dp.Configuration.Value | Should -BeNullOrEmpty
+      }
+      It 'Converts ValidateSetAttribute.' {
+         $sb = [scriptblock]::Create(@'
+[CmdletBinding()]
+param(
+   [Parameter(Mandatory = $false, HelpMessage = 'File Layout Configuration')]
+   [ValidateSet('Debug', 'Release', 'Package')]
+   [string]
+   $Configuration = 'Debug'
+)
+'@)
+         $dp = Convert-ParamBlockAstToDynamicParameters -ParamBlock $sb.Ast.ParamBlock
+
+         $dp.Count | Should -BeExactly 1
+         $dp.Configuration | Should -BeOfType [System.Management.Automation.RuntimeDefinedParameter]
+         $dp.Configuration.Attributes | Should -Not -BeNullOrEmpty
+         $dp.Configuration.Attributes.Count | Should -BeExactly 2
+         $dp.Configuration.Attributes[1] | Should -BeOfType [System.Management.Automation.ValidateSetAttribute]
+         $dp.Configuration.Attributes[1].ValidValues | Should -Be @('Debug', 'Release', 'Package')
+         $dp.Configuration.Value | Should -BeNullOrEmpty
+      }
+      It 'Converts switch paramater.' {
+         $sb = [scriptblock]::Create(@'
+[CmdletBinding()]
+param(
+   [switch]
+   $IncludeTestArtifacts
+)
+'@)
+         $dp = Convert-ParamBlockAstToDynamicParameters -ParamBlock $sb.Ast.ParamBlock
+
+         $dp.Count | Should -BeExactly 1
+         $dp.IncludeTestArtifacts | Should -BeOfType [System.Management.Automation.RuntimeDefinedParameter]
+         $dp.IncludeTestArtifacts.ParameterType.UnderlyingSystemType | Should -BeExactly ([switch].UnderlyingSystemType)
+         $dp.IncludeTestArtifacts.Value | Should -BeNullOrEmpty
+      }
+   }
+}
+
 Describe 'Merge-HashTable' {
    InModuleScope Psx {
       Context 'When hashtables are given by arguments.' {

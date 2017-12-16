@@ -20,16 +20,16 @@
    GUID                  = '217de01f-f2e1-460a-99a4-b8895d0dd071'
    Author                = 'François Chabot'
    CompanyName           = 'be.stateless'
-   Copyright             = '(c) 2012 - 2015 be.stateless. All rights reserved.'
+   Copyright             = '(c) 2012 - 2017 be.stateless. All rights reserved.'
    Description           = 'Useful PowerShell function helpers.'
    ModuleToProcess       = 'Psx.psm1'
-   ModuleVersion         = '1.0'
+   ModuleVersion         = '2.0'
    ProcessorArchitecture = 'None'
    PowerShellVersion     = '4.0'
    RequiredModules       = @('Pscx')
 
    AliasesToExport       = @('*')
    CmdletsToExport       = @()
-   FunctionsToExport     = @('Assert-*', 'Compare-*', 'Get-*', 'Merge-*', 'Test-*')
+   FunctionsToExport     = @('Assert-*', 'Compare-*', 'Convert-*', 'Invoke-*', 'Get-*', 'Merge-*', 'Test-*')
    VariablesToExport     = @()
 }

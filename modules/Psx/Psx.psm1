@@ -127,16 +127,59 @@ function Compare-HashTable {
       if ($ReferenceHashTable.ContainsKey($key) -and !$DifferenceHashTable.ContainsKey($key)) {
          [PSCustomObject]@{Key = $key ; ReferenceValue = $ReferenceHashTable.$key ; SideIndicator = '<' ; DifferenceValue = $null} | Tee-Object -Variable difference
          Write-Verbose -Message $difference
-      } elseif (!$ReferenceHashTable.ContainsKey($key) -and $DifferenceHashTable.ContainsKey($key)) {
+      }
+      elseif (!$ReferenceHashTable.ContainsKey($key) -and $DifferenceHashTable.ContainsKey($key)) {
          [PSCustomObject]@{Key = $key ; ReferenceValue = $null ; SideIndicator = '>' ; DifferenceValue = $DifferenceHashTable.$key} | Tee-Object -Variable difference
          Write-Verbose -Message $difference
-      } else {
+      }
+      else {
          $referenceValue, $differenceValue = $ReferenceHashTable.$key, $DifferenceHashTable.$key
          if ($referenceValue -ne $differenceValue) {
             [PSCustomObject]@{Key = $key ; ReferenceValue = $referenceValue ; SideIndicator = '<>' ; DifferenceValue = $differenceValue} | Tee-Object -Variable difference
             Write-Verbose -Message $difference
          }
       }
+   }
+}
+
+function Convert-ScriptBlockParametersToDynamicParameters {
+   [CmdletBinding()]
+   [OutputType([System.Management.Automation.RuntimeDefinedParameterDictionary])]
+   param(
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [scriptblock]
+      $ScriptBlock
+   )
+   begin {
+      # https://stackoverflow.com/questions/26910789/is-it-possible-to-reuse-a-param-block-across-multiple-functions
+      $commonParameterNames = [FormatterServices]::GetUninitializedObject([CommonParameters]) |
+         Get-Member -MemberType Properties |
+         Select-Object -ExpandProperty Name
+      $dynamicParameters = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+   }
+   process {
+      $ScriptBlock.Ast.ParamBlock | Select-Object -ExpandProperty Parameters |
+         Where-Object -FilterScript { $commonParameterNames -notcontains $_.Name.VariablePath.UserPath } |
+         ForEach-Object -Process {
+         $paramName = $_.Name.VariablePath.UserPath
+         $paramAttributes = new-object System.Collections.ObjectModel.Collection[System.Attribute]
+         $_.Attributes | ForEach-Object -Process {
+            $attributeType = Invoke-Expression -Command "[$($_.TypeName.FullName)]"
+            if ([System.Management.Automation.Internal.CmdletMetadataAttribute].IsAssignableFrom($attributeType)) {
+               $attribute = New-Object -TypeName $attributeType.FullName -ArgumentList @($_.PositionalArguments | ForEach-Object Value)
+               $_.NamedArguments | ForEach-Object -Process {
+                  $attribute.($_.ArgumentName) = Invoke-Expression -Command ($_.Argument.Extent.Text)
+               }
+               $paramAttributes.Add($attribute)
+            }
+         }
+         $param = New-Object System.Management.Automation.RuntimeDefinedParameter $paramName, $_.StaticType, $paramAttributes
+         $dynamicParameters.Add($paramName, $param)
+      }
+   }
+   end {
+      $dynamicParameters
    }
 }
 
@@ -168,6 +211,25 @@ function Get-CommandAlias {
          $cmd = $cmd.Definition
       }
       @(Get-Command $cmd) + @(Get-Alias -Definition $cmd -errorAction SilentlyContinue | Sort-Object)
+   }
+}
+
+function Invoke-ScriptBlock {
+   [CmdletBinding()]
+   param(
+      [Parameter(Mandatory = $true)]
+      [scriptblock]
+      $ScriptBlock,
+
+      [Parameter(Mandatory = $true)]
+      [psobject]
+      $Parameters
+   )
+   process {
+      $expectedParameters = @( $ScriptBlock.Ast.ParamBlock | Select-Object -ExpandProperty Parameters | ForEach-Object -Process { $_.Name.VariablePath.UserPath } )
+      $unexpectedParameters = @( $Parameters.Keys | Where-Object -FilterScript { $_ -notin $expectedParameters } )
+      $unexpectedParameters | ForEach-Object -Process { $Parameters.Remove($_) | Out-Null }
+      & $ScriptBlock @Parameters
    }
 }
 
@@ -345,6 +407,9 @@ function Test-Elevated {
 if (-not((Get-Module Pscx).Version.Major -ge 3)) {
    throw "PowerShell Community Extensions PSCX 3.0 or higher is required to run this module!"
 }
+
+[accelerators]::Add('CommonParameters', 'System.Management.Automation.Internal.CommonParameters')
+[accelerators]::Add('FormatterServices', 'System.Runtime.Serialization.FormatterServices')
 
 Set-Alias aka Get-CommandAlias -Option AllScope -Scope 'Global' -Force
 Set-Alias which Get-Command -Option AllScope -Scope 'Global' -Force
