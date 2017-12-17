@@ -16,6 +16,8 @@
 
 #endregion
 
+Set-StrictMode -Version Latest
+
 #region ItemGroup
 
 function Compare-ItemGroup {
@@ -137,7 +139,8 @@ function Expand-ItemGroup {
          $items = @(
             $currentItemGroup.$itemGroupName `
                | Where-Object -FilterScript { Test-Item -Item $_ -IsValid } `
-               | Where-Object -FilterScript { $_.Path -ne '*' -and ($_.Condition -eq $null -or $_.Condition) } -PipelineVariable item `
+               | Where-Object -FilterScript { (Test-Item -Item $_ -Property Path) -and $_.Path -ne '*' } -PipelineVariable item `
+               | Where-Object -FilterScript { -not(Test-Item -Item $_ -Property Condition) -or $_.Condition } `
                | ForEach-Object -Process { $item.Path | Resolve-Path -ErrorAction Stop <# will throw if Item is not found #> | Select-Object -ExpandProperty ProviderPath } -PipelineVariable path `
                | ForEach-Object -Process { Merge-HashTable -HashTable @{Path = $path}, $item, $defaultItem }
          )
@@ -163,7 +166,7 @@ function Test-ItemGroup {
 
       [Parameter(Mandatory = $true)]
       [switch]
-      $Duplicate = $false
+      $Duplicate
    )
    begin {
       $itemGroupCache = @()
@@ -173,7 +176,7 @@ function Test-ItemGroup {
    }
    end {
       if ($Duplicate) {
-         $itemGroupCache.Keys | Group-Object |
+         $itemGroupCache | Select-Object -ExpandProperty Keys | Group-Object |
             Where-Object -FilterScript { $_.Count -gt 1 } |
             ForEach-Object -Process { Write-Warning -Message "ItemGroup '$($_.Name)' has been defined multiple times." }
          $itemGroupCache | ForEach-Object -Process { $_.Values } | Test-Item -Duplicate:$Duplicate
@@ -278,50 +281,76 @@ function Test-Item {
       [psobject[]]
       $Item,
 
+      [Parameter(Mandatory = $true, ParameterSetName = 'member')]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $Property,
+
       [Parameter(Mandatory = $true, ParameterSetName = 'duplicate')]
       [switch]
-      $Duplicate = $false,
+      $Duplicate,
 
       [Parameter(Mandatory = $true, ParameterSetName = 'valid')]
       [switch]
-      $IsValid = $false
+      $IsValid
    )
    begin {
-      $itemCache = @()
-      $isItem = $false
+      switch ($PSCmdlet.ParameterSetName) {
+         'member' {}
+         'duplicate' {
+            $itemCache = @()
+         }
+         'valid' {
+            $isItem = $false
+         }
+      }
    }
    process {
-      if ($Duplicate) {
-         $itemCache += @(
-            $Item |
-               Where-Object -FilterScript { Test-Item -Item $_ -IsValid } |
-               ForEach-Object -Process { $_ }
-         )
-      }
-      if ($IsValid) {
-         $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | ForEach-Object -Process {
-            if (-not $isItem) {
-               if ($currentItem -eq $null) {
-                  $isItem = $false
-               }
-               elseif ($currentItem -is [hashtable]) {
-                  $isItem = $currentItem.Count -gt 0
+      switch ($PSCmdlet.ParameterSetName) {
+         'member' {
+            $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | Where-Object -FilterScript { Test-Item -Item $currentItem -IsValid } | ForEach-Object -Process {
+               if ($currentItem -is [hashtable]) {
+                  $currentItem.Keys -contains $Property
                }
                elseif ($currentItem -is [PSCustomObject]) {
-                  $isItem = $currentItem | Get-Member -MemberType NoteProperty, ScriptProperty | Test-Any
+                  Get-Member -InputObject $currentItem -Name $Property -MemberType  NoteProperty, ScriptProperty | Test-Any
+               }
+            }
+         }
+         'duplicate' {
+            $itemCache += @(
+               $Item | ForEach-Object -Process { $_ } | Where-Object -FilterScript { Test-Item -Item $_ -IsValid }
+            )
+         }
+         'valid' {
+            $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | ForEach-Object -Process {
+               if (-not $isItem) {
+                  if ($currentItem -eq $null) {
+                     $isItem = $false
+                  }
+                  elseif ($currentItem -is [hashtable]) {
+                     $isItem = $currentItem.Count -gt 0
+                  }
+                  elseif ($currentItem -is [PSCustomObject]) {
+                     $isItem = $currentItem | Get-Member -MemberType NoteProperty, ScriptProperty | Test-Any
+                  }
                }
             }
          }
       }
    }
    end {
-      if ($Duplicate) {
-         $itemCache | Group-Object -Property { $_.Path } |
-            Where-Object -FilterScript { $_.Count -gt 1 } |
-            ForEach-Object -Process { Write-Warning -Message "Item '$($_.Name)' has been defined multiple times." }
-      }
-      if ($IsValid) {
-         $isItem
+      switch ($PSCmdlet.ParameterSetName) {
+         'member' {}
+         'duplicate' {
+            # TODO rename param to Uniqueness and return true or false besides writing warnings
+            $itemCache | Group-Object -Property { $_.Path } |
+               Where-Object -FilterScript { $_.Count -gt 1 } |
+               ForEach-Object -Process { Write-Warning -Message "Item '$($_.Name)' has been defined multiple times." }
+         }
+         'valid' {
+            $isItem
+         }
       }
    }
 }
