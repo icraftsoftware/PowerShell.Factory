@@ -104,7 +104,7 @@ Describe 'Compare-Hashtable' {
    }
 }
 
-Describe 'Convert-ParamBlockAstToDynamicParameters' {
+Describe 'Convert-ScriptBlockParametersToDynamicParameters' {
    InModuleScope Psx {
       It 'Converts simple parameters.' {
          $sb = [scriptblock]::Create(@'
@@ -114,7 +114,7 @@ param(
    $Configuration = 'Debug'
 )
 '@)
-         $dp = Convert-ParamBlockAstToDynamicParameters -ParamBlock $sb.Ast.ParamBlock
+         $dp = Convert-ScriptBlockParametersToDynamicParameters -ScriptBlock $sb
 
          $dp | Should -Not -BeNullOrEmpty
          $dp | Should -BeOfType [System.Management.Automation.RuntimeDefinedParameterDictionary]
@@ -133,7 +133,7 @@ param(
    $Configuration = 'Debug'
 )
 '@)
-         $dp = Convert-ParamBlockAstToDynamicParameters -ParamBlock $sb.Ast.ParamBlock
+         $dp = Convert-ScriptBlockParametersToDynamicParameters -ScriptBlock $sb
 
          $dp.Count | Should -BeExactly 1
          $dp.Configuration | Should -BeOfType [System.Management.Automation.RuntimeDefinedParameter]
@@ -154,7 +154,7 @@ param(
    $Configuration = 'Debug'
 )
 '@)
-         $dp = Convert-ParamBlockAstToDynamicParameters -ParamBlock $sb.Ast.ParamBlock
+         $dp = Convert-ScriptBlockParametersToDynamicParameters -ScriptBlock $sb
 
          $dp.Count | Should -BeExactly 1
          $dp.Configuration | Should -BeOfType [System.Management.Automation.RuntimeDefinedParameter]
@@ -172,7 +172,7 @@ param(
    $IncludeTestArtifacts
 )
 '@)
-         $dp = Convert-ParamBlockAstToDynamicParameters -ParamBlock $sb.Ast.ParamBlock
+         $dp = Convert-ScriptBlockParametersToDynamicParameters -ScriptBlock $sb
 
          $dp.Count | Should -BeExactly 1
          $dp.IncludeTestArtifacts | Should -BeOfType [System.Management.Automation.RuntimeDefinedParameter]
