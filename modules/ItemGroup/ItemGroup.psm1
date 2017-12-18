@@ -308,8 +308,11 @@ function Test-Item {
    process {
       switch ($PSCmdlet.ParameterSetName) {
          'member' {
-            $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | Where-Object -FilterScript { Test-Item -Item $currentItem -IsValid } | ForEach-Object -Process {
-               if ($currentItem -is [hashtable]) {
+            $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | ForEach-Object -Process {
+               if (-not(Test-Item -Item $currentItem -IsValid)) {
+                  $false
+               }
+               elseif ($currentItem -is [hashtable]) {
                   $currentItem.Keys -contains $Property
                }
                elseif ($currentItem -is [PSCustomObject]) {

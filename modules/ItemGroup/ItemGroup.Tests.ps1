@@ -772,6 +772,35 @@ Describe 'Test-Item-Duplicate' {
    }
 }
 
+Describe 'Test-Item-Property' {
+   InModuleScope ItemGroup {
+      It 'Is false for empty hashtable.' {
+         @{} | Test-Item -Property 'Condition' | Should -Be $false
+      }
+      It 'Is false for an array of empty hashtables.' {
+         @( @{} , @{} ) | Test-Item -Property 'Condition' | Should -Be @($false, $false)
+      }
+      It 'Is false for hashtable.' {
+         @{Path = 1} | Test-Item -Property 'Condition' | Should -Be $false
+      }
+      It 'Is true for hashtable.' {
+         @{Condition = $null} | Test-Item -Property 'Condition' | Should -Be $true
+      }
+      It 'Is false for empty custom object.' {
+         ([pscustomobject]@{}) | Test-Item -Property 'Condition' | Should -Be $false
+      }
+      It 'Is false for an array of empty custom objects.' {
+         @( [pscustomobject]@{} , [pscustomobject]@{} ) | Test-Item -Property 'Condition' | Should -Be @($false, $false)
+      }
+      It 'Is false for custom object.' {
+         ([pscustomobject]@{Path = 1}) | Test-Item -Property 'Condition' | Should -Be $false
+      }
+      It 'Is true for custom object.' {
+         ([pscustomobject]@{Condition = $null}) | Test-Item -Property 'Condition' | Should -Be $true
+      }
+   }
+}
+
 Describe 'Test-Item-IsValid' {
    InModuleScope ItemGroup {
       It 'Is false for $null.' {
