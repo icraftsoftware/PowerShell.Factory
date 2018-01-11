@@ -66,13 +66,24 @@ function Import-ItemGroup {
    [OutputType([hashtable])]
    param(
       [Parameter(Position = 0, Mandatory = $true)]
-      [psobject[]]
+      [ValidateNotNullOrEmpty()]
+      [string]
       $Path
    )
    dynamicparam {
-      $source = Get-Content -Raw -Path $Path
-      $scriptBlock = [scriptblock]::Create($source)
-      Convert-ScriptBlockParametersToDynamicParameters -ScriptBlock $scriptBlock
+      # resolve path to itemgroup file when invoked through 'Get-Help -Name Import-ItemGroup -Path <some item group file.psd1>' as well
+      if (-not(Test-Path -Path Variable:Path)) {
+         # $Path = Get-PSCallStack | Select-Object -Last 1 -ExpandProperty Position | Select-Object -ExpandProperty Text |
+         $Path = Get-PSCallStack | Select-Object -Last 1 -ExpandProperty InvocationInfo | Select-Object -ExpandProperty MyCommand |
+            Where-Object -FilterScript {$_ -match '^Get\-Help\s+(:?\-Name\s+)?Import\-ItemGroup\s+\-Path\s+''?([^\s'']+)''?.*$' } |
+            ForEach-Object -Process { Resolve-Path $Matches[2] | Select-Object -ExpandProperty Path }
+      }
+      # $Path is mandatory but could be $null when invoked through 'Get-Help -Name Import-ItemGroup'
+      if (![string]::IsNullOrEmpty($Path)) {
+         $source = Get-Content -Raw -Path $Path
+         $scriptBlock = [scriptblock]::Create($source)
+         Convert-ScriptBlockParametersToDynamicParameters -ScriptBlock $scriptBlock
+      }
    }
    begin {
       $location = Get-Location
