@@ -76,7 +76,7 @@ function Import-ItemGroup {
          # $Path = Get-PSCallStack | Select-Object -Last 1 -ExpandProperty Position | Select-Object -ExpandProperty Text |
          $Path = Get-PSCallStack | Select-Object -Last 1 -ExpandProperty InvocationInfo | Select-Object -ExpandProperty MyCommand |
             Where-Object -FilterScript {$_ -match '^Get\-Help\s+(:?\-Name\s+)?Import\-ItemGroup\s+\-Path\s+''?([^\s'']+)''?.*$' } |
-            ForEach-Object -Process { Resolve-Path $Matches[2] | Select-Object -ExpandProperty Path }
+            ForEach-Object -Process { $Matches[2] }
       }
       # $Path is mandatory but could be $null when invoked through 'Get-Help -Name Import-ItemGroup'
       if (![string]::IsNullOrEmpty($Path)) {
