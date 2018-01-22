@@ -1,6 +1,6 @@
 #region Copyright & License
 
-# Copyright © 2012 - 2017 François Chabot
+# Copyright © 2012 - 2018 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
    GUID                  = '533b5f59-49ce-4f51-a293-cb78f5cf81b5'
    Author                = 'François Chabot'
    CompanyName           = 'be.stateless'
-   Copyright             = '(c) 2017 be.stateless. All rights reserved.'
+   Copyright             = '(c) 2018 be.stateless. All rights reserved.'
    Description           = 'BizTalk Server deployment task to be used in conjunction with InvokeBuild module.'
    ModuleToProcess       = 'BizTalk.Deployment.psm1'
    ModuleVersion         = '1.0'
