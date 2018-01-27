@@ -1,6 +1,6 @@
 #region Copyright & License
 
-# Copyright © 2012 - 2017 François Chabot
+# Copyright © 2012 - 2018 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
    GUID                  = 'bf08c9f4-bf1f-4e94-92d4-7e3b47a9baee'
    Author                = 'François Chabot'
    CompanyName           = 'be.stateless'
-   Copyright             = '(c) 2017 be.stateless. All rights reserved.'
+   Copyright             = '(c) 2018 be.stateless. All rights reserved.'
    Description           = 'ItemGroup definition processing.'
    ModuleToProcess       = 'ItemGroup.psm1'
    ModuleVersion         = '1.0'

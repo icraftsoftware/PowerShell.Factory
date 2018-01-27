@@ -1,6 +1,6 @@
 #region Copyright & License
 
-# Copyright © 2012 - 2017 François Chabot
+# Copyright © 2012 - 2018 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -140,7 +140,7 @@ function Expand-ItemGroup {
       $result = @{}
    }
    process {
-      $ItemGroup | Test-ItemGroup -Duplicate
+      $ItemGroup | Test-ItemGroup -Unique
       $ItemGroup | ForEach-Object -Process { $_ } -PipelineVariable currentItemGroup | Select-Object -ExpandProperty Keys -PipelineVariable itemGroupName | ForEach-Object -Process {
          Write-Information -MessageData "Expanding ItemGroup '$itemGroupName'." -InformationAction Continue
          if ($currentItemGroup.$itemGroupName -isnot [array]) { throw "'$itemGroupName' is expected to be an array." }
@@ -159,7 +159,7 @@ function Expand-ItemGroup {
             Write-Warning -Message "Items of ItemGroup '$itemGroupName' have been redefined."
          }
          $result.$itemGroupName = @($items | ConvertTo-Item)
-         $result.$itemGroupName | Test-Item -Duplicate
+         $result.$itemGroupName | Test-Item -Unique
       }
    }
    end {
@@ -177,20 +177,20 @@ function Test-ItemGroup {
 
       [Parameter(Mandatory = $true)]
       [switch]
-      $Duplicate
+      $Unique
    )
    begin {
       $itemGroupCache = @()
    }
    process {
-      if ($Duplicate) { $itemGroupCache += @( $ItemGroup | ForEach-Object -Process { $_ } ) }
+      if ($Unique) { $itemGroupCache += @( $ItemGroup | ForEach-Object -Process { $_ } ) }
    }
    end {
-      if ($Duplicate) {
-         $itemGroupCache | Select-Object -ExpandProperty Keys | Group-Object |
-            Where-Object -FilterScript { $_.Count -gt 1 } |
-            ForEach-Object -Process { Write-Warning -Message "ItemGroup '$($_.Name)' has been defined multiple times." }
-         $itemGroupCache | ForEach-Object -Process { $_.Values } | Test-Item -Duplicate:$Duplicate
+      if ($Unique) {
+         $duplicates = $itemGroupCache | Select-Object -ExpandProperty Keys | Group-Object | Where-Object -FilterScript { $_.Count -gt 1 }
+         $duplicates | ForEach-Object -Process { Write-Warning -Message "ItemGroup '$($_.Name)' has been defined multiple times." }
+         # TODO $duplicates | Test-Any
+         $itemGroupCache | ForEach-Object -Process { $_.Values } | Test-Item -Unique:$Unique
       }
    }
 }
@@ -297,9 +297,9 @@ function Test-Item {
       [string]
       $Property,
 
-      [Parameter(Mandatory = $true, ParameterSetName = 'duplicate')]
+      [Parameter(Mandatory = $true, ParameterSetName = 'uniqueness')]
       [switch]
-      $Duplicate,
+      $Unique,
 
       [Parameter(Mandatory = $true, ParameterSetName = 'valid')]
       [switch]
@@ -308,7 +308,7 @@ function Test-Item {
    begin {
       switch ($PSCmdlet.ParameterSetName) {
          'member' {}
-         'duplicate' {
+         'uniqueness' {
             $itemCache = @()
          }
          'valid' {
@@ -331,7 +331,7 @@ function Test-Item {
                }
             }
          }
-         'duplicate' {
+         'uniqueness' {
             $itemCache += @(
                $Item | ForEach-Object -Process { $_ } | Where-Object -FilterScript { Test-Item -Item $_ -IsValid }
             )
@@ -356,11 +356,10 @@ function Test-Item {
    end {
       switch ($PSCmdlet.ParameterSetName) {
          'member' {}
-         'duplicate' {
-            # TODO rename param to Uniqueness and return true or false besides writing warnings
-            $itemCache | Group-Object -Property { $_.Path } |
-               Where-Object -FilterScript { $_.Count -gt 1 } |
-               ForEach-Object -Process { Write-Warning -Message "Item '$($_.Name)' has been defined multiple times." }
+         'uniqueness' {
+            $duplicates = $itemCache | Group-Object -Property { $_.Path } | Where-Object -FilterScript { $_.Count -gt 1 }
+            $duplicates | ForEach-Object -Process { Write-Warning -Message "Item '$($_.Name)' has been defined multiple times." }
+            # TODO $duplicates | Test-Any
          }
          'valid' {
             $isItem
@@ -375,4 +374,4 @@ function Test-Item {
  # Main
  #>
 
-Export-ModuleMember -Function Import-ItemGroup, Expand-ItemGroup
+Export-ModuleMember -Function Import-ItemGroup, Expand-ItemGroup, Test-Item
