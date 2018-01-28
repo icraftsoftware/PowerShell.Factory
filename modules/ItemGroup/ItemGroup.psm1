@@ -140,7 +140,7 @@ function Expand-ItemGroup {
       $result = @{}
    }
    process {
-      $ItemGroup | Test-ItemGroup -Unique
+      $ItemGroup | Test-ItemGroup -Unique | Out-Null
       $ItemGroup | ForEach-Object -Process { $_ } -PipelineVariable currentItemGroup | Select-Object -ExpandProperty Keys -PipelineVariable itemGroupName | ForEach-Object -Process {
          Write-Information -MessageData "Expanding ItemGroup '$itemGroupName'." -InformationAction Continue
          if ($currentItemGroup.$itemGroupName -isnot [array]) { throw "'$itemGroupName' is expected to be an array." }
@@ -159,7 +159,7 @@ function Expand-ItemGroup {
             Write-Warning -Message "Items of ItemGroup '$itemGroupName' have been redefined."
          }
          $result.$itemGroupName = @($items | ConvertTo-Item)
-         $result.$itemGroupName | Test-Item -Unique
+         $result.$itemGroupName | Test-Item -Unique | Out-Null
       }
    }
    end {
@@ -187,10 +187,11 @@ function Test-ItemGroup {
    }
    end {
       if ($Unique) {
-         $duplicates = $itemGroupCache | Select-Object -ExpandProperty Keys | Group-Object | Where-Object -FilterScript { $_.Count -gt 1 }
+         $duplicates = @( $itemGroupCache | Select-Object -ExpandProperty Keys | Group-Object | Where-Object -FilterScript { $_.Count -gt 1 } )
          $duplicates | ForEach-Object -Process { Write-Warning -Message "ItemGroup '$($_.Name)' has been defined multiple times." }
-         # TODO $duplicates | Test-Any
-         $itemGroupCache | ForEach-Object -Process { $_.Values } | Test-Item -Unique:$Unique
+         $itemGroupsAreUnique = $duplicates.Length -eq 0
+         $itemsAreUnique = $itemGroupCache | ForEach-Object -Process { $_.Values } | Test-Item -Unique
+         $itemGroupsAreUnique -and $itemsAreUnique
       }
    }
 }
@@ -357,9 +358,9 @@ function Test-Item {
       switch ($PSCmdlet.ParameterSetName) {
          'membership' {}
          'uniqueness' {
-            $duplicates = $itemCache | Group-Object -Property { $_.Path } | Where-Object -FilterScript { $_.Count -gt 1 }
+            $duplicates = @( $itemCache | Group-Object -Property { $_.Path } | Where-Object -FilterScript { $_.Count -gt 1 } )
             $duplicates | ForEach-Object -Process { Write-Warning -Message "Item '$($_.Name)' has been defined multiple times." }
-            # TODO $duplicates | Test-Any
+            $duplicates.Length -eq 0
          }
          'validity' {
             $isItem
@@ -374,4 +375,4 @@ function Test-Item {
  # Main
  #>
 
- Export-ModuleMember -Function Import-ItemGroup, Expand-ItemGroup, Test-Item, Test-ItemGroup
+Export-ModuleMember -Function Import-ItemGroup, Expand-ItemGroup, Test-Item, Test-ItemGroup

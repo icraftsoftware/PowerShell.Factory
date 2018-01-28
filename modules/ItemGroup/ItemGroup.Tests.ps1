@@ -436,14 +436,14 @@ Describe 'Test-ItemGroup' {
          It 'Has no duplicate.' {
             $itemGroup = @( @{One = @(@{})}, @{Two = @(@{})} )
 
-            Test-ItemGroup -ItemGroup $itemGroup -Unique
+            Test-ItemGroup -ItemGroup $itemGroup -Unique | Should -Be $true
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Warns about each duplicate item group.' {
             $itemGroup = @( @{One = @(@{})}, @{One = @(@{})} )
 
-            Test-ItemGroup -ItemGroup $itemGroup -Unique
+            Test-ItemGroup -ItemGroup $itemGroup -Unique | Should -Be $false
 
             Assert-MockCalled Write-Warning -Times 1
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
@@ -453,7 +453,7 @@ Describe 'Test-ItemGroup' {
                @( @{One = @(@{})}, @{Two = @(@{})} )
                @( @{One = @(@{})}, @{Two = @(@{})} )
             )
-            Test-ItemGroup -ItemGroup $itemGroups -Unique
+            Test-ItemGroup -ItemGroup $itemGroups -Unique | Should -Be $false
 
             Assert-MockCalled Write-Warning -Times 2
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
@@ -465,12 +465,12 @@ Describe 'Test-ItemGroup' {
          It 'Has no duplicate.' {
             $itemGroup = @( @{One = @(@{})}, @{Two = @(@{})} )
 
-            $itemGroup | Test-ItemGroup -Unique
+            $itemGroup | Test-ItemGroup -Unique | Should -Be $true
          }
          It 'Warns about each duplicate item group.' {
             $itemGroup = @( @{One = @(@{})}, @{One = @(@{})} )
 
-            $itemGroup | Test-ItemGroup -Unique
+            $itemGroup | Test-ItemGroup -Unique | Should -Be $false
 
             Assert-MockCalled Write-Warning -Times 1
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
@@ -480,7 +480,7 @@ Describe 'Test-ItemGroup' {
                @( @{One = @(@{})}, @{Two = @(@{})} )
                @( @{One = @(@{})}, @{Two = @(@{})} )
             )
-            $itemGroups | Test-ItemGroup -Unique
+            $itemGroups | Test-ItemGroup -Unique | Should -Be $false
 
             Assert-MockCalled Write-Warning -Times 2 # has been called only once
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
@@ -663,56 +663,56 @@ Describe 'Test-Item-Unique' {
          It 'Does not trace an empty array.' {
             $item = @()
 
-            Test-Item -Item $item -Unique
+            Test-Item -Item $item -Unique | Should -Be $true
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Does not trace an array of empty arrays.' {
             $items = @( @(), @() )
 
-            Test-Item -Item $items -Unique
+            Test-Item -Item $items -Unique | Should -Be $true
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Does not trace an array of empty hashtables.' {
             $items = @( @{}, @{} )
 
-            Test-Item -Item $items -Unique
+            Test-Item -Item $items -Unique | Should -Be $true
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Does not trace an array of arrays of empty hashtables.' {
             $items = @( @( @{}, @{} ) , @( @{}, @{} ) )
 
-            Test-Item -Item $items -Unique
+            Test-Item -Item $items -Unique | Should -Be $true
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Does not trace an array of empty Items.' {
             $items = @( (ConvertTo-Item @{}) , (ConvertTo-Item @{}) )
 
-            Test-Item -Item $items -Unique
+            Test-Item -Item $items -Unique | Should -Be $true
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Does not trace an array of arrays of empty Items.' {
             $items = @( @( @{}, @{} ) , @( @{}, @{} ) )
 
-            Test-Item -Item $items -Unique
+            Test-Item -Item $items -Unique | Should -Be $true
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Has no duplicate.' {
             $item = @( @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'Three'} )
 
-            Test-Item -Item $item -Unique
+            Test-Item -Item $item -Unique | Should -Be $true
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Warns about each duplicate item in array.' {
             $item = @( @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'Three'} )
 
-            Test-Item -Item $item -Unique
+            Test-Item -Item $item -Unique | Should -Be $false
 
             Assert-MockCalled Write-Warning -Times 2
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'Item ''One'' has been defined multiple times.' } -Times 1
@@ -724,7 +724,7 @@ Describe 'Test-Item-Unique' {
                @( @{Path = 'Two'}, @{Path = 'Three'} )
             )
 
-            Test-Item -Item $items -Unique
+            Test-Item -Item $items -Unique | Should -Be $false
 
             Assert-MockCalled Write-Warning -Times 2
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'Item ''One'' has been defined multiple times.' } -Times 1
@@ -736,21 +736,21 @@ Describe 'Test-Item-Unique' {
          It 'Does not trace an empty array.' {
             $item = @()
 
-            $item | Test-Item -Unique
+            $item | Test-Item -Unique | Should -Be $true
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Has no duplicate.' {
             $item = @( @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'Three'} )
 
-            $item | Test-Item -Unique
+            $item | Test-Item -Unique | Should -Be $true
 
             Assert-MockCalled Write-Warning -Times 0
          }
          It 'Warns about each duplicate item in array.' {
             $item = @( @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'One'}, @{Path = 'Two'}, @{Path = 'Three'} )
 
-            $item | Test-Item -Unique
+            $item | Test-Item -Unique | Should -Be $false
 
             Assert-MockCalled Write-Warning -Times 2
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'Item ''One'' has been defined multiple times.' } -Times 1
@@ -762,7 +762,7 @@ Describe 'Test-Item-Unique' {
                @( @{Path = 'Two'}, @{Path = 'Three'} )
             )
 
-            $items | Test-Item -Unique
+            $items | Test-Item -Unique | Should -Be $false
 
             Assert-MockCalled Write-Warning -Times 2
             Assert-MockCalled Write-Warning -ParameterFilter { $Message -eq 'Item ''One'' has been defined multiple times.' } -Times 1
