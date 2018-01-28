@@ -801,40 +801,40 @@ Describe 'Test-Item-Property' {
    }
 }
 
-Describe 'Test-Item-IsValid' {
+Describe 'Test-Item-Valid' {
    InModuleScope ItemGroup {
       It 'Is false for $null.' {
-         $null | Test-Item -IsValid | Should -Be $false
+         $null | Test-Item -Valid | Should -Be $false
       }
       It 'Is false for an empty hashtable.' {
-         @{} | Test-Item -IsValid | Should -Be $false
+         @{} | Test-Item -Valid | Should -Be $false
       }
       It 'Is false for an empty custom object.' {
-         ([pscustomobject]@{}) | Test-Item -IsValid | Should -Be $false
+         ([pscustomobject]@{}) | Test-Item -Valid | Should -Be $false
       }
       It 'Is false for an empty array.' {
-         @() | Test-Item -IsValid | Should -Be $false
+         @() | Test-Item -Valid | Should -Be $false
       }
       It 'Is false for an array of empty hashtables.' {
-         @( @{} , @{} ) | Test-Item -IsValid | Should -Be $false
+         @( @{} , @{} ) | Test-Item -Valid | Should -Be $false
       }
       It 'Is false for an array of empty custom objects.' {
-         @( ([pscustomobject]@{}) , ([pscustomobject]@{}) ) | Test-Item -IsValid | Should -Be $false
+         @( ([pscustomobject]@{}) , ([pscustomobject]@{}) ) | Test-Item -Valid | Should -Be $false
       }
       It 'Is true for a hashtable with property.' {
-         @{x = $null} | Test-Item -IsValid | Should -Be $true
+         @{x = $null} | Test-Item -Valid | Should -Be $true
       }
       It 'Is true for a custom object with property.' {
-         ([pscustomobject]@{x = $null}) | Test-Item -IsValid | Should -Be $true
+         ([pscustomobject]@{x = $null}) | Test-Item -Valid | Should -Be $true
       }
       It 'Is true for an array with one non-empty hashtable.' {
-         @( @{x = $null} , @{} ) | Test-Item -IsValid | Should -Be $true
+         @( @{x = $null} , @{} ) | Test-Item -Valid | Should -Be $true
       }
       It 'Is true for an array with one non-empty custom object.' {
-         @( ([pscustomobject]@{x = $null}) , ([pscustomobject]@{}) ) | Test-Item -IsValid | Should -Be $true
+         @( ([pscustomobject]@{x = $null}) , ([pscustomobject]@{}) ) | Test-Item -Valid | Should -Be $true
       }
       It 'Accepts arguments of mixed hashtable and custom object items' {
-         Test-Item -IsValid -Item @( @{x = $null} , ([pscustomobject]@{x = $null}) ) | Should -Be $true
+         Test-Item -Valid -Item @( @{x = $null} , ([pscustomobject]@{x = $null}) ) | Should -Be $true
       }
    }
 }

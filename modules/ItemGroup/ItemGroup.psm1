@@ -149,7 +149,7 @@ function Expand-ItemGroup {
          # iterates over valid non-default items to flatten vector ones, i.e. those whose item.Path is a list/array of items
          $items = @(
             $currentItemGroup.$itemGroupName `
-               | Where-Object -FilterScript { Test-Item -Item $_ -IsValid } `
+               | Where-Object -FilterScript { Test-Item -Item $_ -Valid } `
                | Where-Object -FilterScript { (Test-Item -Item $_ -Property Path) -and $_.Path -ne '*' } -PipelineVariable item `
                | Where-Object -FilterScript { -not(Test-Item -Item $_ -Property Condition) -or $_.Condition } `
                | ForEach-Object -Process { $item.Path | Resolve-Path -ErrorAction Stop <# will throw if Item is not found #> | Select-Object -ExpandProperty ProviderPath } -PipelineVariable path `
@@ -278,7 +278,7 @@ function Resolve-DefaultItem {
    # compute default item, which defines inheritable default properties, from all items whose Path = '*'
    $ItemGroup |
       ForEach-Object -Process { $_ } |
-      Where-Object -FilterScript { (Test-Item -Item $_ -IsValid) -and $_.Path -eq '*' } |
+      Where-Object -FilterScript { (Test-Item -Item $_ -Valid) -and $_.Path -eq '*' } |
       Merge-HashTable -Exclude 'Path' -Force
 }
 
@@ -303,7 +303,7 @@ function Test-Item {
 
       [Parameter(Mandatory = $true, ParameterSetName = 'valid')]
       [switch]
-      $IsValid
+      $Valid
    )
    begin {
       switch ($PSCmdlet.ParameterSetName) {
@@ -320,7 +320,7 @@ function Test-Item {
       switch ($PSCmdlet.ParameterSetName) {
          'member' {
             $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | ForEach-Object -Process {
-               if (-not(Test-Item -Item $currentItem -IsValid)) {
+               if (-not(Test-Item -Item $currentItem -Valid)) {
                   $false
                }
                elseif ($currentItem -is [hashtable]) {
@@ -333,7 +333,7 @@ function Test-Item {
          }
          'uniqueness' {
             $itemCache += @(
-               $Item | ForEach-Object -Process { $_ } | Where-Object -FilterScript { Test-Item -Item $_ -IsValid }
+               $Item | ForEach-Object -Process { $_ } | Where-Object -FilterScript { Test-Item -Item $_ -Valid }
             )
          }
          'valid' {
@@ -374,4 +374,4 @@ function Test-Item {
  # Main
  #>
 
-Export-ModuleMember -Function Import-ItemGroup, Expand-ItemGroup, Test-Item
+ Export-ModuleMember -Function Import-ItemGroup, Expand-ItemGroup, Test-Item, Test-ItemGroup
