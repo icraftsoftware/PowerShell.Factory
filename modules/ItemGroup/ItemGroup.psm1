@@ -292,7 +292,7 @@ function Test-Item {
       [psobject[]]
       $Item,
 
-      [Parameter(Mandatory = $true, ParameterSetName = 'member')]
+      [Parameter(Mandatory = $true, ParameterSetName = 'membership')]
       [ValidateNotNullOrEmpty()]
       [string]
       $Property,
@@ -301,24 +301,24 @@ function Test-Item {
       [switch]
       $Unique,
 
-      [Parameter(Mandatory = $true, ParameterSetName = 'valid')]
+      [Parameter(Mandatory = $true, ParameterSetName = 'validity')]
       [switch]
       $Valid
    )
    begin {
       switch ($PSCmdlet.ParameterSetName) {
-         'member' {}
+         'membership' {}
          'uniqueness' {
             $itemCache = @()
          }
-         'valid' {
+         'validity' {
             $isItem = $false
          }
       }
    }
    process {
       switch ($PSCmdlet.ParameterSetName) {
-         'member' {
+         'membership' {
             $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | ForEach-Object -Process {
                if (-not(Test-Item -Item $currentItem -Valid)) {
                   $false
@@ -336,7 +336,7 @@ function Test-Item {
                $Item | ForEach-Object -Process { $_ } | Where-Object -FilterScript { Test-Item -Item $_ -Valid }
             )
          }
-         'valid' {
+         'validity' {
             $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | ForEach-Object -Process {
                if (-not $isItem) {
                   if ($currentItem -eq $null) {
@@ -355,13 +355,13 @@ function Test-Item {
    }
    end {
       switch ($PSCmdlet.ParameterSetName) {
-         'member' {}
+         'membership' {}
          'uniqueness' {
             $duplicates = $itemCache | Group-Object -Property { $_.Path } | Where-Object -FilterScript { $_.Count -gt 1 }
             $duplicates | ForEach-Object -Process { Write-Warning -Message "Item '$($_.Name)' has been defined multiple times." }
             # TODO $duplicates | Test-Any
          }
-         'valid' {
+         'validity' {
             $isItem
          }
       }
