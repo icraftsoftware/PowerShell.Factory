@@ -21,7 +21,7 @@ Import-Module ItemGroup -Force
 Describe 'Import-ItemGroup' {
    InModuleScope ItemGroup {
        It 'Has to be done.' {
-           Set-TestInconclusive
+           Set-TestInconclusive -Message 'To do!'
        }
    }
 }

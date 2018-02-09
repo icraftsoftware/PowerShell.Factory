@@ -18,11 +18,6 @@
 
 Import-Module ItemGroup -Force
 
-# Describe 'Import-ItemGroup' {
-#    InModuleScope ItemGroup {
-#    }
-# }
-
 Describe 'Test-Item -Unique' {
    InModuleScope ItemGroup {
       Context 'When Items are given by arguments' {
