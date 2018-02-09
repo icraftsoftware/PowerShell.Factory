@@ -4,9 +4,12 @@ modules/InvokeBuild/
 modules/Media/
 modules/Net/
 modules/Ores/
+modules/posh-git/
 modules/Spotlight/
 modules/Tfs/
 modules/Utils/
+Scripts/
 
+*.InstallLog
 CreateWorkspace.ps1
 WMIExplorer.ps1
