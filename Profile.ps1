@@ -68,6 +68,10 @@ function TabExpansion2 {
    }
 }
 
+function cpr {
+      Clear-Project -Recurse
+}
+
 <#
  # Main
  #>
