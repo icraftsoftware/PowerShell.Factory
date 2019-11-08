@@ -17,19 +17,19 @@
 #endregion
 
 @{
-   GUID                  = '217de01f-f2e1-460a-99a4-b8895d0dd071'
-   Author                = 'François Chabot'
-   CompanyName           = 'be.stateless'
-   Copyright             = '(c) 2012 - 2019 be.stateless. All rights reserved.'
-   Description           = 'Useful PowerShell function helpers.'
-   ModuleToProcess       = 'Psx.psm1'
-   ModuleVersion         = '2.0'
-   ProcessorArchitecture = 'None'
-   PowerShellVersion     = '4.0'
-   RequiredModules       = @('Pscx')
+    GUID                  = 'c3ecee78-0920-45dd-bc46-4b46033825d6'
+    Author                = 'François Chabot'
+    CompanyName           = 'be.stateless'
+    Copyright             = '(c) 2012 - 2019 be.stateless. All rights reserved.'
+    Description           = 'Team Foundation Commands.'
+    ModuleToProcess       = 'Tfs.psm1'
+    ModuleVersion         = '1.0'
+    ProcessorArchitecture = 'None'
+    PowerShellVersion     = '3.0'
+    RequiredModules       = @('Psx', 'MSBuild')
 
-   AliasesToExport       = @('*')
-   CmdletsToExport       = @()
-   FunctionsToExport     = @('*')
-   VariablesToExport     = @()
+    AliasesToExport       = @()
+    CmdletsToExport       = @()
+    FunctionsToExport     = @('*')
+    VariablesToExport     = @()
 }

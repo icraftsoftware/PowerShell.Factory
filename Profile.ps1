@@ -45,7 +45,7 @@ function TabExpansion2 {
       [Hashtable] $options = $null
    )
    End {
-      if ($options -ne $null) {
+      if ($null -ne $options) {
          $options += $global:options
       }
       else {
@@ -68,28 +68,23 @@ function TabExpansion2 {
    }
 }
 
-function cpr {
-      Clear-Project -Recurse
-}
-
 <#
  # Main
  #>
 
+# setup TabExpansion2 hook points
+if (-not $global:options) {
+   $global:options = @{ CustomArgumentCompleters = @{ }; NativeArgumentCompleters = @{ } }
+}
+
 if (Test-Elevated) {
+   # https://blogs.msdn.microsoft.com/commandline/2017/06/20/understanding-windows-console-host-settings/
+   # Computer\HKEY_CURRENT_USER\Console
    (Get-Host).UI.RawUI.Backgroundcolor = 'Black'
+   #[console]::BackgroundColor = 'Black'
    Clear-Host
 }
 
-# setup TabExpansion2 hook points
-if (-not $global:options) {
-   $global:options = @{ CustomArgumentCompleters = @{}; NativeArgumentCompleters = @{} }
-}
-
-# # setup Set-Location shortcut functions after TFS workspaces defined locally
-# if (Get-VisualStudioVersionNumbers) {
-#     Get-Workspaces -Uri https://tfs.codeplex.com/tfs/TFS14 | New-WorkspaceShortcut -Prefix '_'
-# }
 Set-Variable -Name windowTitle `
    -Value (' - ' + 'Windows PowerShell' + (?: { Test-32bitProcess } { ' x86' } { '' } ) + (?: { Test-Elevated } { ' (Administrator)' } { '' } )) `
    -Scope 0 `

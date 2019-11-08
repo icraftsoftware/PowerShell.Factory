@@ -1,6 +1,6 @@
 ﻿#region Copyright & License
 
-# Copyright © 2012 - 2017 François Chabot
+# Copyright © 2012 - 2019 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,13 +32,13 @@ Set-StrictMode -Version Latest
     © 2012 be.stateless.
 #>
 function Assert-32bitProcess {
-   [CmdletBinding()]
-   param()
+    [CmdletBinding()]
+    param()
 
-   if (-not(Test-32bitProcess)) {
-      throw "A 32 bit process is required to run this function!"
-   }
-   Write-Verbose "Process is 32 bit."
+    if (-not(Test-32bitProcess)) {
+        throw "A 32 bit process is required to run this function!"
+    }
+    Write-Verbose "Process is 32 bit."
 }
 
 <#
@@ -55,13 +55,13 @@ function Assert-32bitProcess {
     © 2012 be.stateless.
 #>
 function Assert-64bitProcess {
-   [CmdletBinding()]
-   param()
+    [CmdletBinding()]
+    param()
 
-   if (-not(Test-64bitProcess)) {
-      throw "A 64 bit process is required to run this function!"
-   }
-   Write-Verbose "Process is 64 bit."
+    if (-not(Test-64bitProcess)) {
+        throw "A 64 bit process is required to run this function!"
+    }
+    Write-Verbose "Process is 64 bit."
 }
 
 <#
@@ -79,13 +79,13 @@ function Assert-64bitProcess {
     © 2012 be.stateless.
 #>
 function Assert-Elevated {
-   [CmdletBinding()]
-   param()
+    [CmdletBinding()]
+    param()
 
-   if (-not(Test-Elevated)) {
-      throw "A process running in elevated mode is required to run this function!"
-   }
-   Write-Verbose "Process is running in elevated mode."
+    if (-not(Test-Elevated)) {
+        throw "A process running in elevated mode is required to run this function!"
+    }
+    Write-Verbose "Process is running in elevated mode."
 }
 
 <#
@@ -112,75 +112,75 @@ function Assert-Elevated {
     See https://gist.github.com/dbroeglin/c6ce3e4639979fa250cf
 #>
 function Compare-HashTable {
-   [CmdletBinding()]
-   [OutputType([PSCustomObject[]])]
-   param (
-      [Parameter(Mandatory = $true)]
-      [HashTable]
-      $ReferenceHashTable,
+    [CmdletBinding()]
+    [OutputType([PSCustomObject[]])]
+    param (
+        [Parameter(Mandatory = $true)]
+        [HashTable]
+        $ReferenceHashTable,
 
-      [Parameter(Mandatory = $true)]
-      [HashTable]
-      $DifferenceHashTable
-   )
-   $ReferenceHashTable.Keys + $DifferenceHashTable.Keys | Sort-Object -Unique -PipelineVariable key | ForEach-Object -Process {
-      if ($ReferenceHashTable.ContainsKey($key) -and !$DifferenceHashTable.ContainsKey($key)) {
-         [PSCustomObject]@{Key = $key ; ReferenceValue = $ReferenceHashTable.$key ; SideIndicator = '<' ; DifferenceValue = $null} | Tee-Object -Variable difference
-         Write-Verbose -Message $difference
-      }
-      elseif (!$ReferenceHashTable.ContainsKey($key) -and $DifferenceHashTable.ContainsKey($key)) {
-         [PSCustomObject]@{Key = $key ; ReferenceValue = $null ; SideIndicator = '>' ; DifferenceValue = $DifferenceHashTable.$key} | Tee-Object -Variable difference
-         Write-Verbose -Message $difference
-      }
-      else {
-         $referenceValue, $differenceValue = $ReferenceHashTable.$key, $DifferenceHashTable.$key
-         if ($referenceValue -ne $differenceValue) {
-            [PSCustomObject]@{Key = $key ; ReferenceValue = $referenceValue ; SideIndicator = '<>' ; DifferenceValue = $differenceValue} | Tee-Object -Variable difference
+        [Parameter(Mandatory = $true)]
+        [HashTable]
+        $DifferenceHashTable
+    )
+    $ReferenceHashTable.Keys + $DifferenceHashTable.Keys | Sort-Object -Unique -PipelineVariable key | ForEach-Object -Process {
+        if ($ReferenceHashTable.ContainsKey($key) -and !$DifferenceHashTable.ContainsKey($key)) {
+            [PSCustomObject]@{Key = $key ; ReferenceValue = $ReferenceHashTable.$key ; SideIndicator = '<' ; DifferenceValue = $null } | Tee-Object -Variable difference
             Write-Verbose -Message $difference
-         }
-      }
-   }
+        }
+        elseif (!$ReferenceHashTable.ContainsKey($key) -and $DifferenceHashTable.ContainsKey($key)) {
+            [PSCustomObject]@{Key = $key ; ReferenceValue = $null ; SideIndicator = '>' ; DifferenceValue = $DifferenceHashTable.$key } | Tee-Object -Variable difference
+            Write-Verbose -Message $difference
+        }
+        else {
+            $referenceValue, $differenceValue = $ReferenceHashTable.$key, $DifferenceHashTable.$key
+            if ($referenceValue -ne $differenceValue) {
+                [PSCustomObject]@{Key = $key ; ReferenceValue = $referenceValue ; SideIndicator = '<>' ; DifferenceValue = $differenceValue } | Tee-Object -Variable difference
+                Write-Verbose -Message $difference
+            }
+        }
+    }
 }
 
 function Convert-ScriptBlockParametersToDynamicParameters {
-   [CmdletBinding()]
-   [OutputType([System.Management.Automation.RuntimeDefinedParameterDictionary])]
-   param(
-      [Parameter(Mandatory = $true)]
-      [ValidateNotNullOrEmpty()]
-      [scriptblock]
-      $ScriptBlock
-   )
-   begin {
-      # https://stackoverflow.com/questions/26910789/is-it-possible-to-reuse-a-param-block-across-multiple-functions
-      $commonParameterNames = [FormatterServices]::GetUninitializedObject([CommonParameters]) |
-         Get-Member -MemberType Properties |
-         Select-Object -ExpandProperty Name
-      $dynamicParameters = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-   }
-   process {
-      $ScriptBlock.Ast.ParamBlock | Select-Object -ExpandProperty Parameters |
-         Where-Object -FilterScript { $commonParameterNames -notcontains $_.Name.VariablePath.UserPath } |
-         ForEach-Object -Process {
-         $paramName = $_.Name.VariablePath.UserPath
-         $paramAttributes = new-object System.Collections.ObjectModel.Collection[System.Attribute]
-         $_.Attributes | ForEach-Object -Process {
-            $attributeType = Invoke-Expression -Command "[$($_.TypeName.FullName)]"
-            if ([System.Management.Automation.Internal.CmdletMetadataAttribute].IsAssignableFrom($attributeType)) {
-               $attribute = New-Object -TypeName $attributeType.FullName -ArgumentList @($_.PositionalArguments | ForEach-Object Value)
-               $_.NamedArguments | ForEach-Object -Process {
-                  $attribute.($_.ArgumentName) = Invoke-Expression -Command ($_.Argument.Extent.Text)
-               }
-               $paramAttributes.Add($attribute)
-            }
-         }
-         $param = New-Object System.Management.Automation.RuntimeDefinedParameter $paramName, $_.StaticType, $paramAttributes
-         $dynamicParameters.Add($paramName, $param)
-      }
-   }
-   end {
-      $dynamicParameters
-   }
+    [CmdletBinding()]
+    [OutputType([System.Management.Automation.RuntimeDefinedParameterDictionary])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [scriptblock]
+        $ScriptBlock
+    )
+    begin {
+        # https://stackoverflow.com/questions/26910789/is-it-possible-to-reuse-a-param-block-across-multiple-functions
+        $commonParameterNames = [FormatterServices]::GetUninitializedObject([CommonParameters]) |
+            Get-Member -MemberType Properties |
+                Select-Object -ExpandProperty Name
+        $dynamicParameters = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+    }
+    process {
+        $ScriptBlock.Ast.ParamBlock | Select-Object -ExpandProperty Parameters |
+            Where-Object -FilterScript { $commonParameterNames -notcontains $_.Name.VariablePath.UserPath } |
+                ForEach-Object -Process {
+                    $paramName = $_.Name.VariablePath.UserPath
+                    $paramAttributes = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+                    $_.Attributes | ForEach-Object -Process {
+                        $attributeType = Invoke-Expression -Command "[$($_.TypeName.FullName)]"
+                        if ([System.Management.Automation.Internal.CmdletMetadataAttribute].IsAssignableFrom($attributeType)) {
+                            $attribute = New-Object -TypeName $attributeType.FullName -ArgumentList @($_.PositionalArguments | ForEach-Object Value)
+                            $_.NamedArguments | ForEach-Object -Process {
+                                $attribute.($_.ArgumentName) = Invoke-Expression -Command ($_.Argument.Extent.Text)
+                            }
+                            $paramAttributes.Add($attribute)
+                        }
+                    }
+                    $param = New-Object System.Management.Automation.RuntimeDefinedParameter $paramName, $_.StaticType, $paramAttributes
+                    $dynamicParameters.Add($paramName, $param)
+                }
+}
+end {
+    $dynamicParameters
+}
 }
 
 <#
@@ -198,39 +198,39 @@ function Convert-ScriptBlockParametersToDynamicParameters {
     © 2012 be.stateless.
 #>
 function Get-CommandAlias {
-   [CmdletBinding()]
-   param(
-      [Parameter(Mandatory = $true)]
-      [string]
-      $Command
-   )
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Command
+    )
 
-   $cmd = Get-Command $Command
-   if ($cmd -ne $null) {
-      if ($cmd.CommandType -eq "alias") {
-         $cmd = $cmd.Definition
-      }
-      @(Get-Command $cmd) + @(Get-Alias -Definition $cmd -errorAction SilentlyContinue | Sort-Object)
-   }
+    $cmd = Get-Command $Command
+    if ($null -ne $cmd) {
+        if ($cmd.CommandType -eq "alias") {
+            $cmd = $cmd.Definition
+        }
+        @(Get-Command $cmd) + @(Get-Alias -Definition $cmd -errorAction SilentlyContinue | Sort-Object)
+    }
 }
 
 function Invoke-ScriptBlock {
-   [CmdletBinding()]
-   param(
-      [Parameter(Mandatory = $true)]
-      [scriptblock]
-      $ScriptBlock,
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock]
+        $ScriptBlock,
 
-      [Parameter(Mandatory = $true)]
-      [psobject]
-      $Parameters
-   )
-   process {
-      $expectedParameters = @( $ScriptBlock.Ast.ParamBlock | Select-Object -ExpandProperty Parameters | ForEach-Object -Process { $_.Name.VariablePath.UserPath } )
-      $unexpectedParameters = @( $Parameters.Keys | Where-Object -FilterScript { $_ -notin $expectedParameters } )
-      $unexpectedParameters | ForEach-Object -Process { $Parameters.Remove($_) | Out-Null }
-      & $ScriptBlock @Parameters
-   }
+        [Parameter(Mandatory = $true)]
+        [psobject]
+        $Parameters
+    )
+    process {
+        $expectedParameters = @( $ScriptBlock.Ast.ParamBlock | Select-Object -ExpandProperty Parameters | ForEach-Object -Process { $_.Name.VariablePath.UserPath } )
+        $unexpectedParameters = @( $Parameters.Keys | Where-Object -FilterScript { $_ -notin $expectedParameters } )
+        $unexpectedParameters | ForEach-Object -Process { $Parameters.Remove($_) | Out-Null }
+        & $ScriptBlock @Parameters
+    }
 }
 
 <#
@@ -243,38 +243,38 @@ function Invoke-ScriptBlock {
     © 2017 be.stateless.
 #>
 function Merge-HashTable {
-   [CmdletBinding()]
-   [OutputType([hashtable])]
-   param(
-      [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true)]
-      [hashtable[]]
-      $HashTable,
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true)]
+        [hashtable[]]
+        $HashTable,
 
-      [Parameter(Mandatory = $false)]
-      [string[]]
-      $Exclude = @(),
+        [Parameter(Mandatory = $false)]
+        [string[]]
+        $Exclude = @(),
 
-      [Parameter(Mandatory = $false)]
-      [switch]
-      $Force
-   )
-   begin {
-      $result = @{}
-   }
-   process {
-      $HashTable | ForEach-Object -Process { $_ } -PipelineVariable currentHashTable | Select-Object -ExpandProperty Keys -PipelineVariable key | ForEach-Object -Process {
-         $propertyExists = $result.ContainsKey($key)
-         if (-not $propertyExists -or ($Force -and $key -notin $Exclude) ) {
-            $result.$key = $currentHashTable.$key
-            if ($propertyExists) {
-               Write-Verbose -Message "Property '$key' has been overwritten because it has been defined multiple times."
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $Force
+    )
+    begin {
+        $result = @{ }
+    }
+    process {
+        $HashTable | ForEach-Object -Process { $_ } -PipelineVariable currentHashTable | Select-Object -ExpandProperty Keys -PipelineVariable key | ForEach-Object -Process {
+            $propertyExists = $result.ContainsKey($key)
+            if (-not $propertyExists -or ($Force -and $key -notin $Exclude) ) {
+                $result.$key = $currentHashTable.$key
+                if ($propertyExists) {
+                    Write-Verbose -Message "Property '$key' has been overwritten because it has been defined multiple times."
+                }
             }
-         }
-      }
-   }
-   end {
-      $result
-   }
+        }
+    }
+    end {
+        $result
+    }
 }
 
 
@@ -289,12 +289,12 @@ function Merge-HashTable {
     © 2012 be.stateless.
 #>
 function Test-32bitArchitecture {
-   [CmdletBinding()]
-   param()
+    [CmdletBinding()]
+    param()
 
-   # http://msdn.microsoft.com/en-us/library/windows/desktop/aa394373(v=vs.85).aspx
-   # On a 32-bit operating system, the value is 32 and on a 64-bit operating system it is 64
-   [bool]((Get-WmiObject -Class Win32_Processor -ComputerName $Env:COMPUTERNAME | Select-Object -First 1).AddressWidth -eq 32)
+    # http://msdn.microsoft.com/en-us/library/windows/desktop/aa394373(v=vs.85).aspx
+    # On a 32-bit operating system, the value is 32 and on a 64-bit operating system it is 64
+    [bool]((Get-WmiObject -Class Win32_Processor -ComputerName $Env:COMPUTERNAME | Select-Object -First 1).AddressWidth -eq 32)
 }
 
 <#
@@ -308,10 +308,10 @@ function Test-32bitArchitecture {
     © 2012 be.stateless.
 #>
 function Test-32bitProcess {
-   [CmdletBinding()]
-   param()
+    [CmdletBinding()]
+    param()
 
-   [bool]($Env:PROCESSOR_ARCHITECTURE -eq 'x86')
+    [bool]($Env:PROCESSOR_ARCHITECTURE -eq 'x86')
 }
 
 <#
@@ -325,12 +325,12 @@ function Test-32bitProcess {
     © 2012 be.stateless.
 #>
 function Test-64bitArchitecture {
-   [CmdletBinding()]
-   param()
+    [CmdletBinding()]
+    param()
 
-   # http://msdn.microsoft.com/en-us/library/windows/desktop/aa394373(v=vs.85).aspx
-   # On a 32-bit operating system, the value is 32 and on a 64-bit operating system it is 64
-   [bool]((Get-WmiObject -Class Win32_Processor -ComputerName $Env:COMPUTERNAME | Select-Object -First 1).AddressWidth -eq 64)
+    # http://msdn.microsoft.com/en-us/library/windows/desktop/aa394373(v=vs.85).aspx
+    # On a 32-bit operating system, the value is 32 and on a 64-bit operating system it is 64
+    [bool]((Get-WmiObject -Class Win32_Processor -ComputerName $Env:COMPUTERNAME | Select-Object -First 1).AddressWidth -eq 64)
 }
 
 <#
@@ -344,10 +344,10 @@ function Test-64bitArchitecture {
     © 2012 be.stateless.
 #>
 function Test-64bitProcess {
-   [CmdletBinding()]
-   param()
+    [CmdletBinding()]
+    param()
 
-   [bool]($Env:PROCESSOR_ARCHITECTURE -match '64')
+    [bool]($Env:PROCESSOR_ARCHITECTURE -match '64')
 }
 
 <#
@@ -359,24 +359,54 @@ function Test-64bitProcess {
     PS> Get-ChildItem | Test-Any
 .NOTES
     See https://blogs.msdn.microsoft.com/jaredpar/2008/06/12/is-there-anything-in-that-pipeline/
+    © 2018 be.stateless.
 #>
 function Test-Any {
-   [CmdletBinding()]
-   param(
-      [Parameter(ValueFromPipeline = $true)]
-      [AllowEmptyCollection()]
-      [psobject[]]
-      $InputObject
-   )
-   begin {
-      $any = $false
-   }
-   process {
-      $any = $true
-   }
-   end {
-      $any
-   }
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline = $true)]
+        [AllowEmptyCollection()]
+        [psobject[]]
+        $InputObject
+    )
+    begin {
+        $any = $false
+    }
+    process {
+        $any = $true
+    }
+    end {
+        $any
+    }
+}
+
+<#
+.SYNOPSIS
+    Tests whether there is nothing in a pipeline.
+.DESCRIPTION
+    This command will return $true if there is nothing in the pipeline, or $false otherwise.
+.EXAMPLE
+    PS> Get-ChildItem | Test-None
+.NOTES
+    © 2018 be.stateless.
+#>
+function Test-None {
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline = $true)]
+        [AllowEmptyCollection()]
+        [psobject[]]
+        $InputObject
+    )
+    begin {
+        $none = $true
+    }
+    process {
+        $none = $false
+    }
+    end {
+        $none
+    }
 }
 
 <#
@@ -390,14 +420,14 @@ function Test-Any {
     © 2012 be.stateless.
 #>
 function Test-Elevated {
-   [CmdletBinding()]
-   param()
+    [CmdletBinding()]
+    param()
 
-   # only if OS is later than XP (i.e. from Vista upward)
-   # if ([System.Environment]::OSVersion.Version.Major -gt 5)
+    # only if OS is later than XP (i.e. from Vista upward)
+    # if ([System.Environment]::OSVersion.Version.Major -gt 5)
 
-   $wid = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-   [bool]( ([Security.Principal.WindowsPrincipal] $wid).IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator) )
+    $wid = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    [bool]( ([Security.Principal.WindowsPrincipal] $wid).IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator) )
 }
 
 <#
@@ -405,11 +435,12 @@ function Test-Elevated {
  #>
 
 if (-not((Get-Module Pscx).Version.Major -ge 3)) {
-   throw "PowerShell Community Extensions PSCX 3.0 or higher is required to run this module!"
+    throw "PowerShell Community Extensions PSCX 3.0 or higher is required to run this module!"
 }
 
 [accelerators]::Add('CommonParameters', 'System.Management.Automation.Internal.CommonParameters')
 [accelerators]::Add('FormatterServices', 'System.Runtime.Serialization.FormatterServices')
 
+Export-ModuleMember -Function 'Assert-*', 'Compare-*', 'Convert-*', 'Invoke-*', 'Get-*', 'Merge-*', 'Test-*'
 Set-Alias aka Get-CommandAlias -Option AllScope -Scope 'Global' -Force
 Set-Alias which Get-Command -Option AllScope -Scope 'Global' -Force

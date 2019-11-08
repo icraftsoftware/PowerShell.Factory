@@ -1,13 +1,17 @@
-modules/Accounts/
-modules/IIS/
-modules/InvokeBuild/
-modules/Media/
-modules/Net/
-modules/Ores/
-modules/posh-git/
-modules/Spotlight/
-modules/Tfs/
-modules/Utils/
+Modules/Accounts/
+Modules/Gac/
+Modules/IIS/
+Modules/InvokeBuild/
+Modules/Media/
+Modules/Net/
+Modules/Ores/
+Modules/Pester/
+Modules/posh-git/
+Modules/Pscx/
+Modules/Spotlight/
+Modules/Tfs/
+Modules/Utils/
+Modules/VSSetup/
 Scripts/
 
 *.InstallLog
