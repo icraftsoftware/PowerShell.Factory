@@ -51,8 +51,8 @@ function Get-Workspace {
 
     $vcs = Get-VersionControlServer -Uri $Uri
     if ($PsCmdlet.ParameterSetName -eq 'Item') {
-        $vcs.QueryWorkspaces($Name, '.', $env:COMPUTERNAME)
         # Invoke-Method -InputObject $vcs -MethodName 'QueryWorkspaces' -Arguments $Name, '.', $env:COMPUTERNAME
+        $vcs.QueryWorkspaces($Name, '.', $env:COMPUTERNAME)
     }
     else {
         # the intuitive call can't be performed directly, $null cannot be passed, see
