@@ -78,6 +78,40 @@ function New-Workspace {
         $Folders
     )
 
+    function ConvertTo-WorkingFolder {
+        [CmdletBinding()]
+        param(
+            [Parameter(Mandatory = $true)]
+            [object[]]
+            $Folders
+        )
+    
+        @(
+            $Folders |
+                Where-Object { $null -ne $_.LocalItem } |
+                    ForEach-Object {
+                        New-Object `
+                            -TypeName Microsoft.TeamFoundation.VersionControl.Client.WorkingFolder `
+                            -ArgumentList @(
+                            $_.ServerItem,
+                            $_.LocalItem,
+                            [Microsoft.TeamFoundation.VersionControl.Client.WorkingFolderType]::Map
+                        )
+                    }
+            $Folders |
+                Where-Object { $null -eq $_.LocalItem } |
+                    ForEach-Object {
+                        New-Object `
+                            -TypeName Microsoft.TeamFoundation.VersionControl.Client.WorkingFolder `
+                            -ArgumentList @(
+                            $_.ServerItem,
+                            $null,
+                            [Microsoft.TeamFoundation.VersionControl.Client.WorkingFolderType]::Cloak
+                        )
+                    }
+        )
+    }
+
     if (-not(Test-Workspace -Uri $Uri -Name $Name)) {
         $workspaceParameters = New-Object `
             -TypeName Microsoft.TeamFoundation.VersionControl.Client.CreateWorkspaceParameters `
@@ -104,40 +138,6 @@ function Test-Workspace {
     )
 
     $null -ne (Get-Workspace -Uri $Uri -Name $Name)
-}
-
-function ConvertTo-WorkingFolder {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [object[]]
-        $Folders
-    )
-
-    @(
-        $Folders |
-            Where-Object { $null -ne $_.LocalItem } |
-                ForEach-Object {
-                    New-Object `
-                        -TypeName Microsoft.TeamFoundation.VersionControl.Client.WorkingFolder `
-                        -ArgumentList @(
-                        $_.ServerItem,
-                        $_.LocalItem,
-                        [Microsoft.TeamFoundation.VersionControl.Client.WorkingFolderType]::Map
-                    )
-                }
-        $Folders |
-            Where-Object { $null -eq $_.LocalItem } |
-                ForEach-Object {
-                    New-Object `
-                        -TypeName Microsoft.TeamFoundation.VersionControl.Client.WorkingFolder `
-                        -ArgumentList @(
-                        $_.ServerItem,
-                        $null,
-                        [Microsoft.TeamFoundation.VersionControl.Client.WorkingFolderType]::Cloak
-                    )
-                }
-    )
 }
 
 <#
@@ -170,7 +170,6 @@ function New-WorkspaceShortcut {
         $Prefix = ''
     )
 
-    #begin { }
     process {
         $name = $Prefix + ($Workspace.Name -replace ' ', '_' -replace '\.', '_')
         if (($Workspace.Folders.Length -gt 0) -and -not(Test-Path "function:global:$name):")) {
@@ -185,7 +184,6 @@ function New-WorkspaceShortcut {
                     Out-Default
         }
     }
-    #end { }
 }
 
 <#
@@ -261,5 +259,3 @@ function Get-VersionControlServer {
  #>
 
 Add-TeamFoundationClientAssemblies
-
-Export-ModuleMember -Function '*-Workspace*', 'ConvertTo-*'

@@ -1,6 +1,6 @@
 ﻿#region Copyright & License
 
-# Copyright © 2012 - 2015 François Chabot, Yves Dierick
+# Copyright © 2012 - 2019 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,19 +20,17 @@
     GUID                  = '0c7067a3-79aa-468c-b4c8-aaa3e15a5d96'
     Author                = 'François Chabot'
     CompanyName           = 'be.stateless'
-    Copyright             = '(c) 2012 - 2015 be.stateless. All rights reserved.'
-    Description           = 'Functions to Bind, Build, Install and Update BizTalk Server flows, or applications, via BizTalk Deployment Framework scripts.'
+    Copyright             = '(c) 2012 - 2019 be.stateless. All rights reserved.'
+    Description           = 'Utility functions to build and clean various Visual Studio solutions and easily switch between the various versions of MSBuild tools intalled.'
     ModuleToProcess       = 'MSBuild.psm1'
     ModuleVersion         = '2.0'
     ProcessorArchitecture = 'None'
     PowerShellVersion     = '4.0'
     RequiredAssemblies    = @('Microsoft.Build')
-    RequiredModules       = @('Psx')
+    RequiredModules       = @('VSE')
 
     AliasesToExport       = @('*')
     CmdletsToExport       = @()
-    FunctionsToExport     = @('Invoke-MSBuild', 'Get-MSBuildTargets', 'Clear-Project', 'Get-VisualStudioVersionNumbers', '*-VisualStudioEnvironment')
+    FunctionsToExport     = @('*')
     VariablesToExport     = @()
-
-    PrivateData           = @{ InstalledVisualStudioVersionNumbers = $null }
 }

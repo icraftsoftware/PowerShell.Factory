@@ -1,6 +1,6 @@
 #region Copyright & License
 
-# Copyright © 2012 - 2017 François Chabot, Yves Dierick
+# Copyright © 2012 - 2019 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,9 +25,17 @@ Set-StrictMode -Version Latest
     The obj subfolder will always be cleaned, while the bin subfolder will only be cleaned iff the Visual Studio project is not a website project (i.e. if there is no web.config file in the given folder).
     The command will always try to clear the *.btm.cs, *.btp.cs, and *.xsd.cs files that are produced by the BizTalk compiler.
 .PARAMETER Path
-    The path to the Visual Studio project.
+    The path to the Visual Studio project to clean. It defaults to the current directory.
+.PARAMETER Packages
+    Whether to clean NuGet packages underneath the Path\packages folder if found. Notice that the Packages switch is not affected by the Recurse switch. You typically use this swith when the current folder is the solution folder and you want the NuGet packages found underneath .\Packages to be cleaned up.
+.PARAMETER Recurse
+    Whether to recursively clean the Visual studio project folders underneath Path. You typically use this swith when the current folder is the solution folder and you want to clean all the projects underneath.
 .EXAMPLE
     Get-ChildItem -Directory | Clear-Project
+.EXAMPLE
+    Get-ChildItem -Directory | Clear-Project -Verbose
+.EXAMPLE
+    Get-ChildItem -Directory | Clear-Project -Verbose -WhatIf
 .EXAMPLE
     Clear-Project -Recurse
 
@@ -37,13 +45,12 @@ Set-StrictMode -Version Latest
 .EXAMPLE
     (gi .\BizTalk.Dsl), (gi .\BizTalk.Dsl.Tests) | Clear-Project -WhatIf
 .NOTES
-    © 2017 be.stateless.
+    © 2019 be.stateless.
 #>
-function Clear-Project
-{
-    [CmdletBinding(DefaultParametersetName='Single',SupportsShouldProcess=$true)]
+function Clear-Project {
+    [CmdletBinding(DefaultParametersetName = 'Single', SupportsShouldProcess = $true)]
     Param(
-        [Parameter(ValueFromPipeline=$true,ValueFromPipelinebyPropertyName=$true)]
+        [Parameter(ValueFromPipeline = $true, ValueFromPipelinebyPropertyName = $true)]
         [psobject[]]
         $Path,
 
@@ -53,7 +60,7 @@ function Clear-Project
         [switch]
         $Recurse
 
-        #TODO switch to also clean .user, .dotsettings.user, etc... files
+        #TODO switch to also clean .user, .dotsettings.user, *.suo etc... files
     )
 
     # TODO test commands via Pester
@@ -73,14 +80,16 @@ function Clear-Project
 
     # begin { }
     process {
-        if ($Path -eq $null) {
+        if ($null -eq $Path) {
             $Path = Get-Item -Path .
-        } else {
+        }
+        else {
             $Path = Get-Item -Path $Path
         }
         if ($Recurse) {
             $projectPaths = Get-ChildItem -Path $Path -Directory
-        } else {
+        }
+        else {
             $projectPaths = $Path
         }
         foreach ($p in $projectPaths) {
@@ -129,15 +138,14 @@ function Clear-Project
 .NOTES
     © 2015 be.stateless.
 #>
-function Get-MSBuildTargets
-{
+function Get-MSBuildTargets {
     [CmdletBinding()]
     param(
-        [Parameter(Position=0,Mandatory=$true)]
+        [Parameter(Position = 0, Mandatory = $true)]
         [string]
         $Project,
 
-        [Parameter(Position=1,Mandatory=$false)]
+        [Parameter(Position = 1, Mandatory = $false)]
         [string]
         $Filter = '.'
     )
@@ -173,36 +181,35 @@ function Get-MSBuildTargets
 .NOTES
     © 2015 be.stateless.
 #>
-function Invoke-MSBuild
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Invoke-MSBuild {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Position=0,Mandatory=$true)]
+        [Parameter(Position = 0, Mandatory = $true)]
         [string]
         $Project,
 
-        [Parameter(Position=1,Mandatory=$false)]
+        [Parameter(Position = 1, Mandatory = $false)]
         [string[]]
         $Targets = '',
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]
         $VisualStudioVersion = $null,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]
         $ToolsVersion = $null,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [int[]]
         $NoWarn,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet('Quiet', 'Minimal', 'Normal', 'Detailed', 'Diagnostic')]
         [string]
         $Verbosity,
 
-        [Parameter(DontShow,ValueFromRemainingArguments=$true)]
+        [Parameter(DontShow, ValueFromRemainingArguments = $true)]
         [object[]]
         $UnboundArguments = @()
     )
@@ -212,16 +219,18 @@ function Invoke-MSBuild
         $parameterDictionary = New-Object -Type System.Management.Automation.RuntimeDefinedParameterDictionary
         # only for .*proj project files, i.e. not for .sln files
         if ($Project -match '.*\.\w*proj$') {
-            Probe-MSBuildProperties $Project | New-DynamicParameter | ForEach-Object { $parameterDictionary.Add($_.Name, $_) }
+            Find-MSBuildProperties $Project | New-DynamicParameter | ForEach-Object { $parameterDictionary.Add($_.Name, $_) }
         }
         $parameterDictionary
     }
 
     begin {
-        $properties = @( $parameterDictionary.Keys |
-            Where-Object { $parameterDictionary.$_.IsSet } |
-            ForEach-Object { $parameterDictionary.$_ } |
-            Select-Object -Property Name, Value )
+        $properties = @(
+            $parameterDictionary.Keys |
+                Where-Object { $parameterDictionary.$_.IsSet } |
+                    ForEach-Object { $parameterDictionary.$_ } |
+                        Select-Object -Property Name, Value
+        )
     }
     process {
         $arguments = @{ Project = $Project }
@@ -240,7 +249,7 @@ function Invoke-MSBuild
         if ($PSBoundParameters.ContainsKey('Verbosity')) {
             $arguments.Verbosity = $Verbosity
         }
-        $arguments.UnboundArguments = $UnboundArguments + @($properties | ForEach-Object { @("-$($_.Name)", $_.Value)})
+        $arguments.UnboundArguments = $UnboundArguments + @($properties | ForEach-Object { @("-$($_.Name)", $_.Value) })
         # see Get-Help about_Splatting
         Invoke-MSBuildCore @arguments `
             -Verbose:($PSBoundParameters['Verbose'] -eq $true) `
@@ -253,44 +262,43 @@ function Invoke-MSBuild
 # http://stackoverflow.com/questions/9382362/view-nested-private-function-definitions-in-powershell
 # https://github.com/ligershark/psbuild/blob/master/src/psbuild.psm1
 # https://github.com/deadlydog/Invoke-MsBuild
-function Invoke-MSBuildCore
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Invoke-MSBuildCore {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Project,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string[]]
         $Targets = $null,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]
         $VisualStudioVersion = '*',
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]
         $ToolsVersion = '*',
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [int[]]
         $NoWarn,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet('Quiet', 'Minimal', 'Normal', 'Detailed', 'Diagnostic')]
         [string]
         $Verbosity,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]
         $Action = 'Invoking MSBuild.exe',
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [switch]
         $Elevated,
 
-        [Parameter(ValueFromRemainingArguments=$true)]
+        [Parameter(ValueFromRemainingArguments = $true)]
         [object[]]
         $UnboundArguments
     )
@@ -318,8 +326,7 @@ function Invoke-MSBuildCore
     $parsing = @{ Parameters = @() ; Verbatim = $null }
     $i = 0
     :parsing while ($UnboundArguments -and $i -lt $UnboundArguments.Length) {
-        switch -regex ($UnboundArguments[$i])
-        {
+        switch -regex ($UnboundArguments[$i]) {
             # parse name of brand new parameter
             '^-(\w+)$' {
                 $parsing.Parameters += @{ Name = $matches[1] ; Values = @() }
@@ -348,14 +355,15 @@ function Invoke-MSBuildCore
         $msbuildArgs += " /property:$($_.Name)=$true"
     }
     # pass $parsing.Verbatim thru to MSBuild
-    if ($parsing.Verbatim -ne $null) {
+    if ($null -ne $parsing.Verbatim) {
         $msbuildArgs += " $($parsing.Verbatim)"
     }
 
     if (-not($PSBoundParameters['Verbose'] -eq $true)) {
         if ($msbuildArgs) {
             Write-Host "$Action on $($rvsv.ProjectFile) with$msbuildArgs"
-        } else {
+        }
+        else {
             Write-Host "$Action on $($rvsv.ProjectFile)"
         }
     }
@@ -373,355 +381,241 @@ function Invoke-MSBuildCore
         Write-Verbose $command
         $scriptBlock = [scriptblock]::Create($command)
         Invoke-Command -ScriptBlock $scriptBlock
-    } else {
+    }
+    else {
         Write-Verbose $command
     }
 }
 
 <#
 .SYNOPSIS
-    Returns the numerically sorted version numbers of all the locally installed Visual Studio versions.
+    Test whether the project files, *.*proj, in a given folder path, reference non-system assemblies from outside of the NuGet packages subfolder.
 .DESCRIPTION
-    This command will returns the version numbers of all the locally installed Visual Studio versions sorted either ascendingly or descendingly. Notice that only those versions for which the common tools are deployed and configured will be returned.
+    This command can be used to ensure than any referenced assembly in a project is not coming from the GAC, which Visual Studio tends to do if it cannot find it where the HintPath points to or if the HintPath is simply missing. Thusly ensuring that a project can be built by simply resotiring the NuGet packages and without deploying anything else in the GAC or elsewhere. The Detailed switch will enumerate any offending references, and HintPaths if present, in a particular project file.
+.PARAMETER Path
+    The path to the Visual Studio project(s).
 .EXAMPLE
-    PS> Get-VisualStudioVersionNumbers
-
-    Returns the version numbers of the installed Visual Studio in ascending numerical order.
+    Get-ChildItem -Directory | Test-HintPath
 .EXAMPLE
-    PS> Get-VisualStudioVersionNumbers -Descending
+    Test-HintPath -Recurse
 
-    Returns the version numbers of the installed Visual Studio in descending numerical order.
+    The -Recurse switch is shorthand for the following compound command: Get-ChildItem -Directory | Test-HintPath.
+.EXAMPLE
+    Test-HintPath .\BizTalk.Dsl, .\BizTalk.Dsl.Tests
+.EXAMPLE
+    Test-HintPath .\BizTalk.Dsl, .\BizTalk.Dsl.Tests -Detailed
+.EXAMPLE
+    (gi .\BizTalk.Dsl), (gi .\BizTalk.Dsl.Tests) | Test-HintPath -Verbose
 .NOTES
-    © 2014 be.stateless.
+    © 2019 be.stateless.
 #>
-function Get-VisualStudioVersionNumbers
-{
+function Test-HintPath {
     [CmdletBinding()]
-    param(
-        [Parameter(Position=0)]
+    Param(
+        [Parameter(ValueFromPipeline = $true, ValueFromPipelinebyPropertyName = $true)]
+        [psobject[]]
+        $Path,
+
         [switch]
-        $Descending
+        $Detailed,
+
+        [switch]
+        $Recurse
     )
-    # http://www.mztools.com/articles/2008/MZ2008003.aspx, but is way too slow
-    #Get-ChildItem -Path HKLM:\SOFTWARE\Classes\VisualStudio.DTE.* -Name |
-    #    Where-Object { $_ -match '^VisualStudio.DTE.(\d+\.\d+)$' } |
-    #    ForEach-Object { $matches[1] } |
-    #    Sort-Object { [float]$_ }
 
-    # http://social.technet.microsoft.com/Forums/windowsserver/en-US/9620af9a-0323-460c-b3e8-68a73715f99d/module-scoped-variable
-    # cache to avoid looking for registry keys again and again
-    $installedVisualStudioVersionNumbers = $MyInvocation.MyCommand.Module.PrivateData['InstalledVisualStudioVersionNumbers']
-
-    if ($installedVisualStudioVersionNumbers -eq $null) {
-        $path = ?: { Test-64bitArchitecture } { 'HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio' } { 'HKLM:\SOFTWARE\Microsoft\VisualStudio' }
-        if (Test-Path $path) {
-            $installedVisualStudioVersionNumbers = Get-ChildItem -Path $path |
-                Where-Object { $_.GetValue('InstallDir') } |
-                Select-Object -ExpandProperty PSChildName |
-                Where-Object { $_ -match '^\d+\.\d+$' } |
-                Where-Object { Test-Path -Path Env:\"$(VisualStudioCommonToolsEnvironmentVariableFromVersionNumber $_)" }
+    process {
+        if ($null -eq $Path) {
+            $Path = Get-Item -Path .
         }
-        $installedVisualStudioVersionNumbers = @($installedVisualStudioVersionNumbers)
-        $MyInvocation.MyCommand.Module.PrivateData['InstalledVisualStudioVersionNumbers'] = $installedVisualStudioVersionNumbers
+        else {
+            $Path = Get-Item -Path $Path
+        }
+        if ($Recurse) {
+            $projectPaths = Get-ChildItem -Path $Path -Directory
+        }
+        else {
+            $projectPaths = $Path
+        }
+        foreach ($p in $projectPaths) {
+            $p = Resolve-Path -Path $p.FullName -Relative
+            Write-Verbose "Checking $p..."
+            Get-ChildItem -Path $p -Filter *.*proj -PipelineVariable projectFile | ForEach-Object {
+                $xml = [xml] (Get-Content -Path $projectFile.FullName -Raw)
+                $nsm = New-Object -TypeName System.Xml.XmlNamespaceManager -ArgumentList ($xml.NameTable)
+                $nsm.AddNamespace('ns', $xml.DocumentElement.xmlns)
+                $noHintReferences = $xml.SelectNodes('//ns:Reference[not(ns:HintPath)]', $nsm) |
+                    Where-Object { $_.Include -notmatch '^System|^Microsoft\.Csharp' }
+                $badHintReferences = $xml.SelectNodes('//ns:Reference[ns:HintPath]', $nsm) |
+                    Where-Object { $_.Include -notmatch '^System|^Microsoft\.Csharp' } |
+                        Where-Object { $_.HintPath -notmatch '\.\.\\packages\\' }
+                if (($noHintReferences | Test-Any) -or ($badHintReferences | Test-Any)) {
+                    Write-Output $projectFile.Name
+                    if ($Detailed) {
+                        if ($noHintReferences | Test-Any) {
+                            Write-Output 'References without hint path'
+                            $noHintReferences | ForEach-Object {
+                                Write-Output "  $($_.Include)"
+                            }
+                        }
+                        if ($badHintReferences | Test-Any) {
+                            Write-Output 'References with suspicious hint path'
+                            $badHintReferences | ForEach-Object {
+                                Write-Output $_.Include
+                                Write-Output "    $($_.HintPath)"
+                            }
+                        }
+                        Write-Output ''
+                    }
+                }
+            }
+        }
     }
-    $installedVisualStudioVersionNumbers | Sort-Object { [float]$_ } -Descending:$Descending
 }
 
-<#
-.SYNOPSIS
-    Ensures that an EnvironmentBlock has been setup to operate the tools accompanying a given version of Visual Studio.
-.DESCRIPTION
-    This command will throw if no EnvironmentBlock has been setup to operate the tools accompanying a given version of Visual Studio and will silently complete otherwise.
-.EXAMPLE
-    PS> Assert-VisualStudioEnvironment
-.EXAMPLE
-    PS> Assert-VisualStudioEnvironment 2010
+#region Private Probing and Resolution Helper Functions
 
-    Asserts that the environment has been specifically setup for Visual Studio 2010.
-.EXAMPLE
-    PS> Assert-VisualStudioEnvironment *
+function Convert-ToolsVersionToVisualStudioVersion([string]$version) {
+    switch -Exact ($version) {
+        '2.0' { '2005' }
+        '3.0' { '2008' }
+        '3.5' { '2008' }
+        '4.0' { '2010' }
+        '4.5' { '2012' }
+        '12.0' { '2013' }
+        default { throw "Tools Version $version is not supported and cannot be used to dertermine the version of Visual Studio to use." }
+    }
+}
 
-    Asserts that the environment has been setup for some version of Visual Studio.
-.EXAMPLE
-    PS> Assert-VisualStudioEnvironment -Verbose
-    With the -Verbose switch, this command will confirm this process is 32 bit.
-.NOTES
-    © 2012 be.stateless.
-#>
-function Assert-VisualStudioEnvironment
-{
+function Find-MSBuildProperties {
     [CmdletBinding()]
     param(
-        [Parameter(Position=0)]
+        [Parameter(Position = 0, Mandatory = $true)]
         [string]
-        $Version = '*'
+        $Project,
+
+        [Parameter(Position = 1)]
+        [string[]]
+        $Exclude = @()
     )
 
-    if (-not(Test-VisualStudioEnvironment $Version)) {
-        if ($Version -eq '*') {
-            throw 'Environment has not been setup for any specific version of Visual Studio! Use the Switch-VisualStudioEnvironment command to setup one.'
-        }
-        throw "Environment has not been setup for Visual Studio $Version!"
+    try {
+        $msbuildProject = [Microsoft.Build.Evaluation.ProjectCollection]::GlobalProjectCollection.LoadProject((Resolve-Path $Project))
+        $msbuildProject.ConditionedProperties.Keys | Where-Object { $Exclude -notcontains $_ } | Sort-Object
     }
-    $currentEnvironment = Get-VisualStudioEnvironment | Select-Object -First 1
-    Write-Verbose "Environment has already been setup for Visual Studio $($currentEnvironment.Version)."
-}
-
-<#
-.SYNOPSIS
-    Returns an anonymous object describing the EnvironmentBlock that has been set up to operate the tools accompanying a given version of Visual Studio.
-.DESCRIPTION
-    This command will returns either $null or an anonymous object whose EnvironmentBlock field references the topmost Pscx.EnvironmentBlock.EnvironmentFrame that has been set up, and whose Version field denotes the version of Visual Studio for which the environment has been set up.
-.EXAMPLE
-    PS> Get-VisualStudioEnvironment
-
-    Returns the topmost EnvironmentBlock descriptor that has been set up for a given version of Visual Studio.
-.EXAMPLE
-    PS> Get-VisualStudioEnvironment | Select-Object -First 1
-
-    Returns the latest and topmost EnvironmentBlock descriptor that has been set up for a given version of Visual Studio.
-.EXAMPLE
-    PS> Get-VisualStudioEnvironment | Select-Object -Last 1
-
-    Returns the earliest and bottommost EnvironmentBlock descriptor that has been set up for a given version of Visual Studio.
-.COMPONENT
-    This command relies on the Pscx Get-EnvironmentBlock function.
-.NOTES
-    © 2013 be.stateless.
-#>
-function Get-VisualStudioEnvironment
-{
-    [CmdletBinding()]
-    param()
-    $currentEnvironment = Get-EnvironmentBlock | Where-Object -Property Description -Match 'VisualStudioVersion=\d{4}'
-    if ($currentEnvironment -ne $null) {
-        $currentEnvironment | ForEach-Object {
-            $matches = ($_.Description | Select-String -Pattern 'VisualStudioVersion=(?<Version>\d{4})').Matches
-            @{ EnvironmentBlock = $_ ; Version = $matches[0].Groups['Version'].Value }
-        }
+    finally {
+        [Microsoft.Build.Evaluation.ProjectCollection]::GlobalProjectCollection.UnloadAllProjects()
     }
 }
 
-<#
-.SYNOPSIS
-    Clears the environment that has been set up for a version of Visual Studio and all EnvironmentBlocks that have been pushed afterwards.
-.DESCRIPTION
-    Unless specified otherwise, this command will clear the latest and topmost environment that has been set up for a version of Visual Studio and all the other EnvironmentBlocks, i.e. Pscx.EnvironmentBlock.EnvironmentFrame, that have been pushed afterwards.
-.PARAMETER Environment
-    The anonymous object whose EnvironmentBlock field references the Pscx.EnvironmentBlock.EnvironmentFrame up to which to clear.
-.EXAMPLE
-    PS> Clear-VisualStudioEnvironment
+function Find-ProjectFile([string]$pattern, [bool]$includeSolutionFiles = $false) {
+    if ($pattern) {
+        $pattern = $pattern.Trim()
+        $path = Split-Path $pattern -Parent
+        if ($path.Length -lt 1) { $path = '.' }
+        $file = Split-Path $pattern -Leaf
+    }
+    else {
+        $path = '.'
+        $file = $null
+    }
+    $includeFilter = @("$file*.*proj")
+    if ($includeSolutionFiles) {
+        $includeFilter = @("$file*.sln") + $includeFilter
+    }
+    Get-ChildItem -Path "$path\*" -Include $includeFilter -Name | ForEach-Object { "$path\$_" }
+}
 
-    Clears all the EnvironmentBlocks that have been set up after and up to the latest Pscx.EnvironmentBlock.EnvironmentFrame that has been setup for a given version of Visual Studio.
-.EXAMPLE
-    PS> Clear-VisualStudioEnvironment -WhatIf
+function Find-ToolStudioVersions([string]$pattern) {
+    # https://docs.microsoft.com/en-us/visualstudio/msbuild/msbuild-toolset-toolsversion?view=vs-2019
+    # https://docs.microsoft.com/en-us/dotnet/api/microsoft.build.utilities.toollocationhelper?view=netframework-4.8
+    # Add-Type -AssemblyName Microsoft.Build.Utilities.v4.0
+    # [Microsoft.Build.Utilities.ToolLocationHelper]::GetTargetPlatformSdks()
+    # [Microsoft.Build.Utilities.ToolLocationHelper]::GetSupportedTargetFrameworks()
 
-    Describes all the EnvironmentBlocks that have been set up and would be cleared.
-.EXAMPLE
-    PS> Get-VisualStudioEnvironment | Select-Object -Last 1 | Clear-VisualStudioEnvironment
+    # https://docs.microsoft.com/en-us/visualstudio/msbuild/updating-an-existing-application?view=vs-2019#use-microsoftbuildlocator
+    # https://github.com/Microsoft/msbuild/issues/2427
+    # https://github.com/Microsoft/msbuild/blob/master/src/MSBuild/app.config#L72-L111
+    # https://dotnet.myget.org/feed/msbuild/package/nuget/Microsoft.Build.MSBuildLocator
+    # https://github.com/Microsoft/MSBuildLocator/
+    Get-ChildItem HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions -Name |
+        Where-Object { $_ -match '\d+\.\d+' } |
+            Sort-Object { [float]$_ }
+}
 
-    Clears all the EnvironmentBlocks that have been set up after and up to the first Pscx.EnvironmentBlock.EnvironmentFrame that has been setup for a given version of Visual Studio.
-.EXAMPLE
-    PS> Clear-VisualStudioEnvironment (Get-VisualStudioEnvironment)[3]
+function Resolve-ProjectFile([string]$project) {
+    if ($project) { $project = $project.Trim() }
+    if (-not(Test-Path .\$project)) {
+        throw "$project MSBuild project file not found!"
+    }
+    @{ ProjectFile = (Resolve-Path $project -Relative) }
+}
 
-    Clears all the EnvironmentBlocks that have been set up after and up to the given Pscx.EnvironmentBlock.EnvironmentFrame that has been setup for a given version of Visual Studio.
-.COMPONENT
-    This command relies on the Pscx Get-EnvironmentBlock, Pop-EnvironmentBlock, and Push-EnvironmentBlock functions.
-.NOTES
-    © 2013 be.stateless.
-#>
-function Clear-VisualStudioEnvironment
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
-    param(
-        [Parameter(Position=0,Mandatory=$false,ValueFromPipeline=$true)]
-        [object]
-        $Environment = $(Get-VisualStudioEnvironment | Select-Object -First 1)
-    )
-    if ($Environment -ne $null) {
-        # fetch Visual Studio's EnvironmentBlock and all EnvironmentBlocks pushed afterwards
-        $deprecatedEnvironmentBlocks = Get-EnvironmentBlock | Where-Object Timestamp -ge $Environment.EnvironmentBlock.Timestamp
+function Resolve-VisualStudioVersion([string]$project, [string]$visualStudioVersion, [string]$toolsVersion) {
+    $rvsv = Resolve-ProjectFile $project
 
-        Write-Verbose "Clearing former Visual Studio $($Environment.Version) environment..."
-        # pop Visual Studio's EnvironmentBlock and all EnvironmentBlocks pushed afterwards
-        $deprecatedEnvironmentBlocks | ForEach-Object {
-            if ($PsCmdlet.ShouldProcess("Environment variables", "Clearing EnvironmentBlock $($_.Description)")) {
-                Pop-EnvironmentBlock
+    # determine Visual Studio Version
+    if ($visualStudioVersion -and $visualStudioVersion -ne '*') {
+        # get it from $visualStudioVersion argument
+        $rvsv.Add('VisualStudioVersion', $visualStudioVersion)
+    }
+    # first try probing $project file as if it were a Visual Studio .sln file
+    elseif ($project -match '.sln$') {
+        $headers = Get-Content -Path $project -TotalCount 5
+        if ($headers | Where-Object { $_ -match '^# Visual Studio (?<Version>\d\d\d\d)\s*$' }) {
+            Write-Verbose "Solution file contains a match for Version: $($Matches.Version)"
+            $version = $Matches.Version
+        }
+        elseif ($headers | Where-Object { $_ -match '^VisualStudioVersion = (?<VersionNumber>\d+\.\d+)[\d.]+\s*$' }) {
+            Write-Verbose "Solution file contains a match for VersionNumber: $($Matches.VersionNumber)"
+            $version = Convert-VisualStudioVersionNumber $Matches.VersionNumber
+        }
+        elseif ($headers | Where-Object { $_ -match '^MinimumVisualStudioVersion = (?<MinimumVersionNumber>\d+\.\d+)[\d.]+\s*$' }) {
+            Write-Verbose "Solution file contains a match for MinimumVersionNumber: $($Matches.MinimumVersionNumber)"
+            $version = Convert-VisualStudioVersionNumber $Matches.MinimumVersionNumber
+        }
+        elseif ($headers | Where-Object { $_ -match '^Microsoft Visual Studio Solution File, Format Version (?<FormatVersion>\d\d\.\d\d)\s*$' }) {
+            Write-Verbose "Solution file contains a match for FormatVersion: $($Matches.FormatVersion)"
+            $version = Convert-VisualStudioSolutionFileFormatVersion $Matches.FormatVersion
+        }
+        if ($null -ne $version) {
+            $visualStudioVersion = & ${Find-VisualStudioVersions-Delegate} | Where-Object { $_ -ge $version } | Select-Object -First 1
+            if ($null -ne $visualStudioVersion) {
+                $rvsv.Add('VisualStudioVersion', $visualStudioVersion)
             }
         }
     }
     else {
-        Write-Verbose "There is no former Visual Studio environment to clear."
-    }
-}
-
-<#
-.SYNOPSIS
-    Sets up the enviroment necessary to operate the tools accompanying a given version of Visual Studio.
-.DESCRIPTION
-    Sets up the enviroment necessary to operate the tools accompanying a given version of Visual Studio. It moreover clears any environment that had previously been setup for another version of Visual Studio.
-.PARAMETER Version
-    The version of Visual Studio for which to setup the environment.
-.EXAMPLE
-    PS> Switch-VisualStudioEnvironment 2008
-
-    Sets up the enviroment necessary to operate Visual Studio 2008 and its accompanying tools.
-.EXAMPLE
-    PS> Switch-VisualStudioEnvironment 2010
-
-    Sets up the enviroment necessary to operate Visual Studio 2010 and its accompanying tools.
-.EXAMPLE
-    PS> Switch-VisualStudioEnvironment 2010 -WhatIf
-
-    Describes the clearing and setup steps that would be necessary to setup the enviroment necessary to operate Visual Studio 2010 and its accompanying tools.
-.COMPONENT
-    This command relies on the Pscx Get-EnvironmentBlock, Pop-EnvironmentBlock, and Push-EnvironmentBlock functions.
-.NOTES
-    © 2013 be.stateless.
-#>
-function Switch-VisualStudioEnvironment
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
-    param(
-        [Parameter(Position=0,Mandatory=$true)]
-        [string]
-        $Version
-    )
-    $currentEnvironment = Get-VisualStudioEnvironment | Select-Object -First 1
-    if ($currentEnvironment -ne $null -and $currentEnvironment.Version -ne $Version) {
-        Get-VisualStudioEnvironment | Select-Object -Last 1 | Clear-VisualStudioEnvironment
-    }
-    if ($currentEnvironment -eq $null -or $currentEnvironment.Version -ne $Version) {
-        Write-Verbose "Setting up environment for Visual Studio $Version..."
-        $versionNumber = Get-VisualStudioVersionNumbers | Where-Object { (Translate-VisualStudioVersionNumber $_) -eq $Version }
-        if ($versionNumber -eq $null) {
-            throw "Version $Version of Visual Studio is not supported (yet)!"
-        }
-
-        $path = Get-Item -Path Env:\"$(VisualStudioCommonToolsEnvironmentVariableFromVersionNumber $versionNumber)"
-        $batchPath = [System.IO.Path]::GetFullPath("$($path.Value)..\..\VC\vcvarsall.bat")
-        if ($PsCmdlet.ShouldProcess("Environment variables", "Pushing EnvironmentBlock for Visual Studio $Version")) {
-            Push-EnvironmentBlock -Description "VisualStudioVersion=$Version"
-            Invoke-BatchFile $batchPath
+        # next try probing $project file as if it were an MSBuild .*proj file
+        # https://natemcmaster.com/blog/2017/03/09/vs2015-to-vs2017-upgrade/
+        $matchInfo = Select-String -Pattern 'Project\s+(.*\s+)?ToolsVersion\s*\=\s*[''"](?<Version>\d+\.\d)[''"]' -Path $project
+        if ($null -ne $matchInfo) {
+            $matches = $matchInfo.Matches
+            if ($matches -ne $null -and $matches.Success) {
+                $probedVersion = $matches[0].Groups['Version'].Value
+                $visualStudioVersion = Convert-ToolsVersionToVisualStudioVersion ([string] $probedVersion)
+                $visualStudioVersion = & ${Find-VisualStudioVersions-Delegate} | Where-Object { $_ -ge $visualStudioVersion } | Select-Object -First 1
+                $rvsv.Add('VisualStudioVersion', $visualStudioVersion)
+            }
         }
     }
-    else {
-        Write-Verbose "Environment has already been setup for Visual Studio $Version."
+
+    # determine MSBuild's ToolsVersion; only relevant if it has been explicitly given, will be determined by MSBuild otherwise
+    if ($toolsVersion -and $toolsVersion -ne '*') {
+        # get it from $toolsVersion argument
+        $rvsv.Add('ToolsVersion', $toolsVersion)
     }
+
+    $rvsv
 }
 
-<#
-.SYNOPSIS
-    Returns whether an EnvironmentBlock has been setup to operate the tools accompanying a given version of Visual Studio.
-.DESCRIPTION
-    This command will return $true if an EnvironmentBlock has been setup to operate the tools accompanying a given version of Visual Studio, or $false otherwise.
-.EXAMPLE
-    PS> Test-VisualStudioEnvironment
-.EXAMPLE
-    PS> Test-VisualStudioEnvironment 2010
+#endregion
 
-    Tests whether the environment has been setup specifically for Visual Studio 2010.
-.EXAMPLE
-    PS> Test-VisualStudioEnvironment *
+#region Dynamic Parameters
 
-    Tests whether the environment has been setup for some version of Visual Studio.
-.NOTES
-    © 2012 be.stateless.
-#>
-function Test-VisualStudioEnvironment
-{
+function New-DynamicParameter {
     [CmdletBinding()]
     param(
-        [Parameter(Position=0)]
-        [string]
-        $Version = '*'
-    )
-
-    $currentEnvironment = Get-VisualStudioEnvironment | Select-Object -First 1
-    [bool]($currentEnvironment -ne $null -and ($Version -eq '*' -or $currentEnvironment.Version -eq $Version))
-}
-
-#region TabExpansion Overrides / Private Probing and Resolution Helper Functions
-
-function Register-TabExpansions
-{
-    $global:options['CustomArgumentCompleters']['Project'] =  {
-        param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
-        if ($commandName -eq 'Invoke-MSBuild')
-        {
-            Probe-ProjectFile $wordToComplete $true | ForEach-Object {
-                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
-            }
-        }
-        elseif ($commandName -eq 'Get-MSBuildTargets')
-        {
-            Probe-ProjectFile $wordToComplete | ForEach-Object {
-                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
-            }
-        }
-    }
-
-    $global:options['CustomArgumentCompleters']['Targets'] =  {
-        param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
-        if ($commandName -eq 'Invoke-MSBuild')
-        {
-            Get-MSBuildTargets $fakeBoundParameter.Project $wordToComplete | ForEach-Object {
-                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
-            }
-        }
-    }
-
-    $global:options['CustomArgumentCompleters']['ToolsVersion'] =  {
-        param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
-        if ($commandName -eq 'Invoke-MSBuild')
-        {
-            Probe-ToolStudioVersions | ForEach-Object {
-                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
-            }
-        }
-    }
-
-    $global:options['CustomArgumentCompleters']['VisualStudioVersion'] =  {
-        param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
-        if ($commandName -eq 'Invoke-MSBuild')
-        {
-            Probe-VisualStudioVersions $wordToComplete | ForEach-Object {
-                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
-            }
-        }
-    }
-
-    $global:options['CustomArgumentCompleters']['Version'] =  {
-        param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
-        if ($commandName -eq 'Switch-VisualStudioEnvironment')
-        {
-            Probe-VisualStudioVersions $wordToComplete | ForEach-Object {
-                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
-            }
-        }
-        elseif ($commandName -match '(Assert|Test)\-VisualStudioEnvironment')
-        {
-            @('*') + @(Probe-VisualStudioVersions $wordToComplete) | ForEach-Object {
-                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
-            }
-        }
-    }
-}
-
-function Unregister-TabExpansions
-{
-    $global:options['CustomArgumentCompleters'].Remove('Project')
-    $global:options['CustomArgumentCompleters'].Remove('Targets')
-    $global:options['CustomArgumentCompleters'].Remove('ToolsVersion')
-    $global:options['CustomArgumentCompleters'].Remove('VisualStudioVersion')
-    $global:options['CustomArgumentCompleters'].Remove('Version')
-}
-
-function New-DynamicParameter
-{
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$true,Position=0,ValueFromPipeline=$true)]
+        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
         [string]
         $Name
     )
@@ -735,207 +629,76 @@ function New-DynamicParameter
     }
 }
 
-function Probe-MSBuildProperties
-{
-    [CmdletBinding()]
-    param(
-        [Parameter(Position=0,Mandatory=$true)]
-        [string]
-        $Project,
+#endregion Dynamic Parameters
 
-        [Parameter(Position=1)]
-        [string[]]
-        $Exclude = @()
-    )
+#region TabExpansion Overrides
 
-    try {
-        $msbuildProject = [Microsoft.Build.Evaluation.ProjectCollection]::GlobalProjectCollection.LoadProject((Resolve-Path $Project))
-        $msbuildProject.ConditionedProperties.Keys | Where-Object { $Exclude -notcontains $_ }| Sort-Object
-    }
-    finally {
-        [Microsoft.Build.Evaluation.ProjectCollection]::GlobalProjectCollection.UnloadAllProjects()
-    }
-}
-
-function Probe-ProjectFile([string]$pattern, [bool]$includeSolutionFiles = $false)
-{
-    if ($pattern) {
-        $pattern = $pattern.Trim()
-        $path = Split-Path $pattern -Parent
-        if ($path.Length -lt 1) { $path = '.' }
-        $file = Split-Path $pattern -Leaf
-    } else {
-        $path = '.'
-        $file = $null
-    }
-    if ($includeSolutionFiles) {
-        Get-ChildItem -Path "$path\*" -Include "$file*.sln", "$file*.*proj" -Name | % { "$path\$_" }
-    } else {
-        Get-ChildItem -Path "$path\*" -Include "$file*.*proj" -Name | % { "$path\$_" }
-    }
-}
-
-function Probe-ToolStudioVersions([string]$pattern)
-{
-    Get-ChildItem HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions -Name |
-        Where-Object { $_ -match '\d+\.\d+' } |
-        Sort-Object { [float]$_ }
-}
-
-function Probe-VisualStudioVersions([string]$pattern)
-{
-    Get-VisualStudioVersionNumbers |
-        Sort-Object { [double]$_ } |
-        ForEach-Object { Translate-VisualStudioVersionNumber $_ } |
-        Where-Object { if ($pattern -eq $null) { $true } else { $_ -match $pattern } }
-}
-
-function Resolve-ProjectFile([string]$project)
-{
-    if ($project) { $project = $project.Trim() }
-    if (-not(Test-Path .\$project)) {
-        throw "$project MSBuild project file not found!"
-    }
-    @{ ProjectFile = (Resolve-Path $project -Relative) }
-}
-
-function Resolve-VisualStudioVersion([string]$project, [string]$visualStudioVersion, [string]$toolsVersion)
-{
-    $rtv = Resolve-ProjectFile $project
-
-    # determine Visual Studio Version
-    if ($visualStudioVersion -and $visualStudioVersion -ne '*') {
-        # get it from $visualStudioVersion argument
-        $rtv.Add('VisualStudioVersion', $visualStudioVersion)
-    }
-    else {
-        # first try probing $project file as if it were a .sln file
-        $pattern = '\s*Microsoft Visual Studio Solution File, Format Version (?<FormatVersion>\d\d\.\d\d)\s*' `
-            + '|\s*# Visual Studio (?<Version>\d\d\d\d)\s*' `
-            + '|\s*VisualStudioVersion = (?<VersionNumber>\d+\.\d+)[\d.]+\s*' `
-            + '|\s*MinimumVisualStudioVersion = (?<MinimumVersionNumber>\d+\.\d+)[\d.]+\s*'
-        $matchInfo = Select-String -Pattern $pattern -Path $project
-        if ($matchInfo -ne $null)  {
-            $matches = @($matchInfo.Matches | Where-Object { $_.Success })
-            # rely on a Visual Studio Version ?
-            if ($matches.Length -gt 1) {
-                $match = $matchInfo.Matches[1]
-                $visualStudioVersion = $match.Groups['Version'].Value
-                $visualStudioVersion = Probe-VisualStudioVersions | Where-Object { $_ -ge $visualStudioVersion } | Select-Object -First 1
-                if ($visualStudioVersion -ne $null) {
-                    $rtv.Add('VisualStudioVersion', $visualStudioVersion)
-                }
-            }
-            # if not, rely on a Visual Studio Version Number ?
-            if ($rtv.VisualStudioVersion -eq $null -and $matches.Length -gt 2) {
-                $match = $matchInfo.Matches[2]
-                $versionNumber = $match.Groups['VersionNumber'].Value
-                $visualStudioVersion = Translate-VisualStudioVersionNumber ([string] $versionNumber)
-                $visualStudioVersion = Probe-VisualStudioVersions | Where-Object { $_ -ge $visualStudioVersion } | Select-Object -First 1
-                if ($visualStudioVersion -ne $null) {
-                    $rtv.Add('VisualStudioVersion', $visualStudioVersion)
-                }
-            }
-            # if not, rely on a minimum Visual Studio Version Number ?
-            if ($rtv.VisualStudioVersion -eq $null -and $matches.Length -gt 3) {
-                $match = $matchInfo.Matches[3]
-                $minimumVersionNumber = $match.Groups['MinimumVersionNumber'].Value
-                $visualStudioVersion = Translate-VisualStudioVersionNumber ([string] $minimumVersionNumber)
-                $visualStudioVersion = Probe-VisualStudioVersions | Where-Object { $_ -ge $visualStudioVersion } | Select-Object -First 1
-                if ($visualStudioVersion -ne $null) {
-                    $rtv.Add('VisualStudioVersion', $visualStudioVersion)
-                }
-            }
-            # if not, rely on a Visual Studio Solution File Format Version
-            if ($rtv.VisualStudioVersion -eq $null -and $matches.Length -gt 0) {
-                $match = $matchInfo.Matches[0]
-                $formatVersion = $match.Groups['FormatVersion'].Value
-                $visualStudioVersion = Translate-VisualStudioSolutionFileFormatVersion ([string] $formatVersion)
-                $visualStudioVersion = Probe-VisualStudioVersions | Where-Object { $_ -ge $visualStudioVersion } | Select-Object -First 1
-                if ($visualStudioVersion -ne $null) {
-                    $rtv.Add('VisualStudioVersion', $visualStudioVersion)
-                }
+function Register-TabExpansions {
+    $global:options['CustomArgumentCompleters']['Project'] = {
+        param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
+        if ($commandName -eq 'Invoke-MSBuild') {
+            Find-ProjectFile $wordToComplete $true | ForEach-Object {
+                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
             }
         }
-        else {
-            # next try probing $project file as if it were an MSBuild .*proj file
-            $matchInfo = Select-String -Pattern 'Project\s+(.*\s+)?ToolsVersion\s*\=\s*[''"](?<Version>\d+\.\d)[''"]' -Path $project
-            if ($matchInfo -ne $null)  {
-                $matches = $matchInfo.Matches
-                if ($matches -ne $null -and $matches.Success) {
-                    $probedVersion = $matches[0].Groups['Version'].Value
-                    $visualStudioVersion = Convert-ToolsVersionToVisualStudioVersion ([string] $probedVersion)
-                    $visualStudioVersion = Probe-VisualStudioVersions | Where-Object { $_ -ge $visualStudioVersion } | Select-Object -First 1
-                    $rtv.Add('VisualStudioVersion', $visualStudioVersion)
-                }
+        elseif ($commandName -eq 'Get-MSBuildTargets') {
+            Find-ProjectFile $wordToComplete | ForEach-Object {
+                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
             }
         }
-
     }
 
-    # determine MSBuild's ToolsVersion; only relevant if it has been explicitly given, will be determined by MSBuild otherwise
-    if ($toolsVersion -and $toolsVersion -ne '*') {
-        # get it from $toolsVersion argument
-        $rtv.Add('ToolsVersion', $toolsVersion)
+    $global:options['CustomArgumentCompleters']['Targets'] = {
+        param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
+        if ($commandName -eq 'Invoke-MSBuild') {
+            Get-MSBuildTargets $fakeBoundParameter.Project $wordToComplete | ForEach-Object {
+                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
+            }
+        }
     }
 
-    $rtv
-}
-
-function Translate-VisualStudioSolutionFileFormatVersion([string]$formatVersion)
-{
-    switch -Exact ($formatVersion) {
-        '10.00' { '2008' }
-        '11.00' { '2010' }
-        '12.00' { '2012' }
-        default { throw "Visual Studio Solution File Format Version $formatVersion is not supported." }
+    $global:options['CustomArgumentCompleters']['ToolsVersion'] = {
+        param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
+        if ($commandName -eq 'Invoke-MSBuild') {
+            Find-ToolStudioVersions | ForEach-Object {
+                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
+            }
+        }
     }
-}
 
-function Translate-VisualStudioVersionNumber([string]$versionNumber)
-{
-    # http://msdn.microsoft.com/en-us/library/bb398195.aspx
-    switch -Exact ($versionNumber) {
-        '9.0'  { '2008' }
-        '10.0' { '2010' }
-        '11.0' { '2012' }
-        '12.0' { '2013' }
-        default { throw "Visual Studio Version Number $versionNumber is not supported." }
+    $global:options['CustomArgumentCompleters']['VisualStudioVersion'] = {
+        param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
+        if ($commandName -eq 'Invoke-MSBuild') {
+            Find-VisualStudioVersions $wordToComplete | ForEach-Object {
+                New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
+            }
+        }
     }
 }
 
-function Convert-ToolsVersionToVisualStudioVersion([string]$version)
-{
-    # http://msdn.microsoft.com/en-us/library/bb383796.aspx
-    switch -Exact ($version) {
-        '2.0'  { '2005' }
-        '3.0'  { '2008' }
-        '3.5'  { '2008' }
-        '4.0'  { '2010' }
-        '4.5'  { '2012' }
-        '12.0' { '2013' }
-        default { throw "Tools Version $version is not supported and cannot be used to dertermine the version of Visual Studio to use." }
-    }
+function Unregister-TabExpansions {
+    $global:options['CustomArgumentCompleters'].Remove('Project')
+    $global:options['CustomArgumentCompleters'].Remove('Targets')
+    $global:options['CustomArgumentCompleters'].Remove('ToolsVersion')
+    $global:options['CustomArgumentCompleters'].Remove('VisualStudioVersion')
 }
 
-function Get-VisualStudioCommonToolsEnvironmentVariableFromVersionNumber([string] $versionNumber)
-{
-    "VS$($versionNumber.Replace('.',''))COMNTOOLS"
-}
-
-#endregion
+#endregion TabExpansion Overrides
 
 <#
  # Main
  #>
 
 Register-TabExpansions
-
 # register clean up handler should the module be removed from the session
 $MyInvocation.MyCommand.ScriptBlock.Module.OnRemove = {
     Unregister-TabExpansions
 }
 
+# friend function delegates
+${Find-VisualStudioVersions-Delegate} = (& (Get-Module VSE) { (Get-Item function:Find-VisualStudioVersions) })
+
 New-Alias -Name build -Value Invoke-MSBuild
 
 Export-ModuleMember -Alias * -Function *
+# Export-ModuleMember -Alias * -Function 'Clear-Project', 'Get-MSBuildTargets', 'Invoke-MSBuild', 'Test-HintPath'

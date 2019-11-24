@@ -14,5 +14,5 @@ Modules/VSSetup/
 Scripts/
 
 *.InstallLog
-CreateWorkspace.ps1
+Create-AllWorkspaces.ps1
 WMIExplorer.ps1
