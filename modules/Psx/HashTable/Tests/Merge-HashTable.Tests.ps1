@@ -16,10 +16,11 @@
 
 #endregion
 
-Import-Module Psx -Force
+Import-Module Psx\HashTable -Force
 
 Describe 'Merge-HashTable' {
-    InModuleScope Psx {
+    InModuleScope HashTable {
+
         Context 'When hashtables are given by arguments.' {
             It 'Merges hashtables.' {
                 $hashTables = @( @{FirstName = 'Tony' }, @{LastName = 'Stark' }, @{DisplayName = 'Tony Stark' }, @{Alias = 'Iron Man' } )
@@ -40,6 +41,7 @@ Describe 'Merge-HashTable' {
                 Compare-HashTable -ReferenceHashTable $expectedResult -DifferenceHashTable $mergedHashTable -Verbose | Should -BeNullOrEmpty
             }
         }
+
         Context 'When hashtables are given by pipeline.' {
             It 'Merges hashtables.' {
                 $hashTables = @( @{FirstName = 'Tony' }, @{LastName = 'Stark' }, @{DisplayName = 'Tony Stark' }, @{Alias = 'Iron Man' } )
@@ -96,6 +98,7 @@ Describe 'Merge-HashTable' {
                 Assert-MockCalled -Scope It -CommandName Write-Verbose -ParameterFilter { $Message -eq 'Property ''FirstName'' has been overwritten because it has been defined multiple times.' } -Times 2
             }
         }
+
     }
 }
  

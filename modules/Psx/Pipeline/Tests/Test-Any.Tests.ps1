@@ -16,11 +16,10 @@
 
 #endregion
 
-Import-Module Psx -Force
-
+Import-Module Psx\Pipeline -Force
 
 Describe 'Test-Any' {
-    InModuleScope Psx {
+    InModuleScope Pipeline {
         It 'Returns false for empty array.' {
             @() | Test-Any | Should -Be $false
         }

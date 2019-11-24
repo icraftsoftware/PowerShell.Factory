@@ -17,19 +17,49 @@
 #endregion
 
 @{
+   RootModule            = 'Psx.psm1'
+   ModuleVersion         = '2.0.0.0'
    GUID                  = '217de01f-f2e1-460a-99a4-b8895d0dd071'
    Author                = 'François Chabot'
    CompanyName           = 'be.stateless'
    Copyright             = '(c) 2012 - 2019 be.stateless. All rights reserved.'
    Description           = 'Useful PowerShell function helpers.'
-   ModuleToProcess       = 'Psx.psm1'
-   ModuleVersion         = '2.0'
    ProcessorArchitecture = 'None'
    PowerShellVersion     = '4.0'
+   NestedModules         = @(
+      'Alias\Alias.psm1',
+      'Bitness\Bitness.psm1',
+      'HashTable\HashTable.psm1',
+      'Pipeline\Pipeline.psm1',
+      'ScriptBlock\ScriptBlock.psm1',
+      'UAC\UAC.psm1'
+   )
    RequiredModules       = @('Pscx')
 
    AliasesToExport       = @('*')
    CmdletsToExport       = @()
-   FunctionsToExport     = @('*')
+   FunctionsToExport     = @(
+      # Alias.psm1
+      'Get-CommandAlias',
+      # Bitness.psm1
+      'Assert-32bitProcess',
+      'Assert-64bitProcess',
+      'Test-32bitArchitecture',
+      'Test-32bitProcess',
+      'Test-64bitArchitecture',
+      'Test-64bitProcess',
+      # HastTable.psm1
+      'Compare-HashTable',
+      'Merge-HashTable',
+      # Pipeline.psm1
+      'Test-Any',
+      'Test-None',
+      # ScriptBlock.psm1
+      'Convert-ScriptBlockParametersToDynamicParameters',
+      'Invoke-ScriptBlock',
+      # UAC.psm1
+      'Assert-Elevated',
+      'Test-Elevated'
+   )
    VariablesToExport     = @()
 }
