@@ -1,6 +1,6 @@
 #region Copyright & License
 
-# Copyright © 2012 - 2018 François Chabot
+# Copyright © 2012 - 2019 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@
 
 #endregion
 
-Import-Module ItemGroup -Force
+Import-Module ItemGroup\Group -Force
 
 Describe 'Import-ItemGroup' {
-   InModuleScope ItemGroup {
-       It 'Has to be done.' {
-           Set-TestInconclusive -Message 'To do!'
-       }
-   }
+    InModuleScope Group {
+        It 'Has to be done.' {
+            Set-TestInconclusive -Message 'To do!'
+        }
+    }
 }

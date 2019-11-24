@@ -1,6 +1,6 @@
 #region Copyright & License
 
-# Copyright © 2012 - 2018 François Chabot
+# Copyright © 2012 - 2019 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,25 +16,27 @@
 
 #endregion
 
-Import-Module ItemGroup -Force
+Import-Module ItemGroup\Group -Force
 
 Describe 'Compare-ItemGroup' {
-   InModuleScope ItemGroup {
+   InModuleScope Group {
+
       Context 'When both ItemGroups are empty' {
          It "should return nothing." {
-            $left = @{}
-            $right = @{}
+            $left = @{ }
+            $right = @{ }
             Compare-ItemGroup $left $right | Should -BeNullOrEmpty
          }
       }
+
       Context "When both ItemGroups have different groups" {
-         It "should return Group1: < and Group2: >." {
-            $left = @{Group1 = @()}
-            $right = @{Group2 = @()}
+         It "should return Group1 {} < and Group2 > {}." {
+            $left = @{ Group1 = @() }
+            $right = @{ Group2 = @() }
 
-            [object[]]$result = Compare-ItemGroup $left $right
+            $result = Compare-ItemGroup $left $right
 
-            $result.Length | Should -Be 2
+            $result | Measure-Object | Select-Object -ExpandProperty Count | Should -Be 2
             $result[0].Key | Should -Be 'Group1'
             $result[0].ReferenceValue | Should -BeNullOrEmpty
             $result[0].SideIndicator | Should -Be "<"
@@ -45,61 +47,67 @@ Describe 'Compare-ItemGroup' {
             $result[1].DifferenceValue | Should -BeNullOrEmpty
          }
       }
-      Context "When both ItemGroups have no item" {
+
+      Context "When both ItemGroups have a common group with no item" {
          It "should return nothing." {
-            $left = @{Group1 = @()}
-            $right = @{Group1 = @()}
+            $left = @{ Group1 = @() }
+            $right = @{ Group1 = @() }
             Compare-ItemGroup $left $right | Should -BeNullOrEmpty
          }
       }
-      Context "When both ItemGroups have one identical item" {
+
+      Context "When both ItemGroups have a common group with one identical item" {
          It "should return nothing." {
-            $left = @{Group1 = @(ConvertTo-Item @{Path = 'Item'})}
-            $right = @{Group1 = @(ConvertTo-Item @{Path = 'Item'})}
+            $left = @{ Group1 = @(ConvertTo-Item @{ Path = 'Item' }) }
+            $right = @{ Group1 = @(ConvertTo-Item @{ Path = 'Item' }) }
             Compare-ItemGroup $left $right | Should -BeNullOrEmpty
          }
       }
-      Context "When both ItemGroups have one partially different item" {
-         It "should return nothing." {
-            $left = @{Group1 = @(ConvertTo-Item @{Path = 'Item1'; Condition = $true})}
-            $right = @{Group1 = @(ConvertTo-Item @{Path = 'Item2'; Condition = $true})}
 
-            [object[]]$result = Compare-ItemGroup $left $right
+      Context "When both ItemGroups have a common group with one partially different item" {
+         It "should return Group1[0].Path Item1 <> Item2." {
+            $left = @{ Group1 = @(ConvertTo-Item @{ Path = 'Item1'; Condition = $true }) }
+            $right = @{ Group1 = @(ConvertTo-Item @{ Path = 'Item2'; Condition = $true }) }
 
-            $result.Length | Should -Be 1
+            $result = Compare-ItemGroup $left $right
+
+            $result | Measure-Object | Select-Object -ExpandProperty Count | Should -Be 1
             $result.Key | Should -Be 'Group1[0].Path'
             $result.ReferenceValue | Should -Be 'Item1'
             $result.SideIndicator | Should -Be "<>"
             $result.DifferenceValue | Should -Be 'Item2'
          }
       }
-      Context "When one reference ItemGroup has an item more than the other" {
-         It "should return nothing." {
-            $left = @{Group1 = @(ConvertTo-Item @{Path = 'Item'})}
-            $right = @{Group1 = @()}
 
-            [object[]]$result = Compare-ItemGroup $left $right
+      Context "When both ItemGroups have a common group and reference ItemGroup has one more Item" {
+         It "should return Group1[0] @{Path=Item} <." {
+            $left = @{ Group1 = @(ConvertTo-Item @{Path = 'Item' }) }
+            $right = @{ Group1 = @() }
 
-            $result.Length | Should -Be 1
+            $result = Compare-ItemGroup $left $right
+
+            $result | Measure-Object | Select-Object -ExpandProperty Count | Should -Be 1
             $result.Key | Should -Be 'Group1[0]'
             $result.ReferenceValue | Should -Be '@{Path=Item}'
             $result.SideIndicator | Should -Be "<"
             $result.DifferenceValue | Should -BeNullOrEmpty
          }
       }
-      Context "When one difference ItemGroup has an item more than the other" {
-         It "should return nothing." {
-            $left = @{Group1 = @()}
-            $right = @{Group1 = @(ConvertTo-Item @{Path = 'Item'})}
 
-            [object[]]$result = Compare-ItemGroup $left $right
+      Context "When both ItemGroups have a common group and difference ItemGroup has one more Item" {
+         It "should return Group1[0] > @{Path=Item}." {
+            $left = @{ Group1 = @() }
+            $right = @{ Group1 = @(ConvertTo-Item @{ Path = 'Item' }) }
 
-            $result.Length | Should -Be 1
+            $result = Compare-ItemGroup $left $right
+
+            $result | Measure-Object | Select-Object -ExpandProperty Count | Should -Be 1
             $result.Key | Should -Be 'Group1[0]'
             $result.ReferenceValue | Should -BeNullOrEmpty
             $result.SideIndicator | Should -Be ">"
             $result.DifferenceValue | Should -Be '@{Path=Item}'
          }
       }
+
    }
 }

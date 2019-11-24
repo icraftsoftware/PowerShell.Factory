@@ -16,3 +16,4 @@ Scripts/
 *.InstallLog
 Create-AllWorkspaces.ps1
 WMIExplorer.ps1
+Modules/ZeCombo/

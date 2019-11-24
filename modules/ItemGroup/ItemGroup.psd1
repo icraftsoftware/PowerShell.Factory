@@ -1,6 +1,6 @@
 #region Copyright & License
 
-# Copyright © 2012 - 2018 François Chabot
+# Copyright © 2012 - 2019 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,19 +17,20 @@
 #endregion
 
 @{
+   RootModule            = 'ItemGroup.psm1'
+   ModuleVersion         = '1.0.0.0'
    GUID                  = 'bf08c9f4-bf1f-4e94-92d4-7e3b47a9baee'
    Author                = 'François Chabot'
    CompanyName           = 'be.stateless'
-   Copyright             = '(c) 2018 be.stateless. All rights reserved.'
+   Copyright             = '(c) 2019 be.stateless. All rights reserved.'
    Description           = 'ItemGroup definition processing.'
-   ModuleToProcess       = 'ItemGroup.psm1'
-   ModuleVersion         = '1.0'
    ProcessorArchitecture = 'None'
    PowerShellVersion     = '4.0'
-   RequiredModules       = @('Psx')
+   NestedModules         = @('Item\Item.psm1', 'Group\Group.psm1')
+   RequiredModules       = @('Pscx', 'Psx')
 
-   AliasesToExport       = @('*')
-   CmdletsToExport       = @()
-   FunctionsToExport     = @('*')
-   VariablesToExport     = @()
+   AliasesToExport       = '*'
+   CmdletsToExport       = '*'
+   FunctionsToExport     = 'Expand-ItemGroup', 'Import-ItemGroup', 'Test-ItemGroup'
+   VariablesToExport     = '*'
 }
