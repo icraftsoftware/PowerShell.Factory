@@ -128,6 +128,7 @@ function Test-Item {
         }
     }
     process {
+
         function private:Get-ItemPropertyMembers {
             [CmdletBinding()]
             [OutputType([psobject[]])]
@@ -145,26 +146,6 @@ function Test-Item {
             }
             else {
                 @()
-            }
-        }
-
-        function private:Trace-DuplicateItem {
-            [CmdletBinding()]
-            [OutputType([Microsoft.PowerShell.Commands.GroupInfo])]
-            param(
-                [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
-                [Microsoft.PowerShell.Commands.GroupInfo]
-                $ItemGroup
-            )
-            process {
-                $ItemGroup.Group | ForEach-Object -Process {
-                    Write-Warning -Message "The following Item '$($ItemGroup.Name)' has been defined multiple times:"
-                    # cast to PSCustomObject to ensure Format-List has an output format consistent among hashtable and PSCustomObject
-                    ([PSCustomObject]$_) | Format-List | Out-String -Stream | Where-Object { -not([string]::IsNullOrWhitespace($_)) } | ForEach-Object -Process {
-                        Write-Warning -Message $_.Trim()
-                    }
-                }
-                $ItemGroup
             }
         }
 
@@ -189,7 +170,7 @@ function Test-Item {
                 $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | ForEach-Object -Process {
                     $isMember = $false
                     if (Test-Item -Item $currentItem -WellFormed) {
-                        $members = Get-ItemPropertyMembers -Item $currentItem
+                        $members = private:Get-ItemPropertyMembers -Item $currentItem
                         switch ($Mode) {
                             'All' {
                                 $isMember = $Property | Where-Object -FilterScript { $members -notcontains $_ } | Test-None
@@ -225,26 +206,47 @@ function Test-Item {
                         }
                     }
                     if (-not $isValid) {
-                        Trace-InvalidItem -Item $currentItem
+                        private:Trace-InvalidItem -Item $currentItem
                     }
                     $isValid
                 }
             }
             'well-formedness' {
                 $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | ForEach-Object -Process {
-                    Get-ItemPropertyMembers -Item $currentItem | Test-Any
+                    private:Get-ItemPropertyMembers -Item $currentItem | Test-Any
                 }
             }
         }
     }
     end {
+
+        function private:Trace-DuplicateItem {
+            [CmdletBinding()]
+            [OutputType([Microsoft.PowerShell.Commands.GroupInfo])]
+            param(
+                [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+                [Microsoft.PowerShell.Commands.GroupInfo]
+                $ItemGroup
+            )
+            process {
+                $ItemGroup.Group | ForEach-Object -Process {
+                    Write-Warning -Message "The following Item '$($ItemGroup.Name)' has been defined multiple times:"
+                    # cast to PSCustomObject to ensure Format-List has an output format consistent among hashtable and PSCustomObject
+                    ([PSCustomObject]$_) | Format-List | Out-String -Stream | Where-Object { -not([string]::IsNullOrWhitespace($_)) } | ForEach-Object -Process {
+                        Write-Warning -Message $_.Trim()
+                    }
+                }
+                $ItemGroup
+            }
+        }
+
         switch ($PSCmdlet.ParameterSetName) {
             'unicity' {
                 # Path property has the precedence over the Name property when grouping Items
                 $allValidItems |
                     Group-Object -Property { if (Test-Item -Item $_ -Property Path) { $_.Path } else { $_.Name } } |
                     Where-Object -FilterScript { $_.Count -gt 1 } |
-                    Trace-DuplicateItem |
+                    private:Trace-DuplicateItem |
                     Test-None
             }
         }
