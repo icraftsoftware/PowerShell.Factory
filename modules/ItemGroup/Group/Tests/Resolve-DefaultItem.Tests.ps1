@@ -75,7 +75,6 @@ Describe 'Resolve-DefaultItem' {
 
       }
       It 'Ignores invalid Items even when Name is ''*''.' {
-         Mock -CommandName Write-Warning -ModuleName Item # avoid cluttering Pester output
          Mock -CommandName Test-Path -ModuleName Item -MockWith { $false <# assumes every path is invalid #> }
          $hashTables = @(
             @{ Path = 'z:\notfound\file.txt'; Name = '*' },

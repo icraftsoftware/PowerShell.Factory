@@ -34,30 +34,28 @@ Describe 'Test-Item-Valid' {
             Test-Item -Item $item -WellFormed | Should -Be $false
 
             # and property membership will not be satisfied anymore
-            Mock -CommandName Write-Warning # avoid cluttering Pester output
-            Test-Item -Item $item -Valid | Should -Be $false
+            Test-Item -Item $item -Valid -WarningAction SilentlyContinue | Should -Be $false
 
             Assert-VerifiableMock
          }
       }
 
       Context 'Validity check when Items are given by argument.' {
-         Mock -CommandName Write-Warning # avoid cluttering Pester output
          It 'Is false when Item does not have a Name nor a Path property.' {
-            Test-Item -Item @(@{ Condition = $true }, [PSCustomObject]@{ Condition = $true }) -Valid | Should -Be ($false, $false)
+            Test-Item -Item @(@{ Condition = $true }, [PSCustomObject]@{ Condition = $true }) -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
          It 'Is false when Item has a null Name property.' {
-            Test-Item -Item @(@{ Name = $null }, [PSCustomObject]@{ Name = $null }) -Valid | Should -Be ($false, $false)
+            Test-Item -Item @(@{ Name = $null }, [PSCustomObject]@{ Name = $null }) -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
          It 'Is true when Item has a non-null Name property.' {
             Test-Item -Item @(@{ Name = 'Stark' }, [PSCustomObject]@{ Name = 'Parker' }) -Valid | Should -Be ($true, $true)
          }
          It 'Is false when Item has a null Path property.' {
-            Test-Item -Item @(@{ Path = $null }, [PSCustomObject]@{ Path = $null }) -Valid | Should -Be ($false, $false)
+            Test-Item -Item @(@{ Path = $null }, [PSCustomObject]@{ Path = $null }) -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
          It 'Is false when Item has an invalid Path property.' {
             Mock -CommandName Test-Path -MockWith { $false <# assumes every path is invalid #> }
-            Test-Item -Item @(@{ Path = 'a:\notfound\file.txt' }, [PSCustomObject]@{ Path = 'a:\notfound\file.txt' }) -Valid | Should -Be ($false, $false)
+            Test-Item -Item @(@{ Path = 'a:\notfound\file.txt' }, [PSCustomObject]@{ Path = 'a:\notfound\file.txt' }) -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
          It 'Is true when Item has a valid Path property and no Name property.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every path is valid #> }
@@ -65,7 +63,7 @@ Describe 'Test-Item-Valid' {
          }
          It 'Is false when Item.Path is invalid although Item.Name is non-null because Path has precedence.' {
             Mock -CommandName Test-Path -MockWith { $false <# assumes every path is invalid #> }
-            Test-Item -Item @(@{ Path = 'a:\notfound\file.txt' ; Name = 'Stark' }, [PSCustomObject]@{ Path = 'a:\notfound\file.txt' ; Name = 'Stark' }) -Valid | Should -Be ($false, $false)
+            Test-Item -Item @(@{ Path = 'a:\notfound\file.txt' ; Name = 'Stark' }, [PSCustomObject]@{ Path = 'a:\notfound\file.txt' ; Name = 'Stark' }) -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
          It 'Is true when Item.Path is valid although Item.Name is null because Path has precedence.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every path is valid #> }
@@ -74,22 +72,21 @@ Describe 'Test-Item-Valid' {
       }
 
       Context 'Validity check when Items are given by pipeline.' {
-         Mock -CommandName Write-Warning # avoid cluttering Pester output
          It 'Is false when Item does not have a Name nor a Path property.' {
-            @{ Condition = $true }, [PSCustomObject]@{ Condition = $true } | Test-Item -Valid | Should -Be ($false, $false)
+            @{ Condition = $true }, [PSCustomObject]@{ Condition = $true } | Test-Item -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
          It 'Is false when Item has a null Name property.' {
-            @{ Name = $null }, [PSCustomObject]@{ Name = $null } | Test-Item -Valid | Should -Be ($false, $false)
+            @{ Name = $null }, [PSCustomObject]@{ Name = $null } | Test-Item -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
          It 'Is true when Item has a non-null Name property.' {
             @{ Name = 'Stark' }, [PSCustomObject]@{ Name = 'Parker' } | Test-Item -Valid | Should -Be ($true, $true)
          }
          It 'Is false when Item has a null Path property.' {
-            @{ Path = $null }, [PSCustomObject]@{ Path = $null } | Test-Item -Valid | Should -Be ($false, $false)
+            @{ Path = $null }, [PSCustomObject]@{ Path = $null } | Test-Item -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
          It 'Is false when Item has an invalid Path property.' {
             Mock -CommandName Test-Path -MockWith { $false <# assumes every path is invalid #> }
-            @(@{ Path = 'a:\notfound\file.txt' }, [PSCustomObject]@{ Path = 'a:\notfound\file.txt' }) | Test-Item -Valid | Should -Be ($false, $false)
+            @(@{ Path = 'a:\notfound\file.txt' }, [PSCustomObject]@{ Path = 'a:\notfound\file.txt' }) | Test-Item -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
          It 'Is true when Item has a valid Path property and no Name property.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every path is valid #> }
@@ -97,7 +94,7 @@ Describe 'Test-Item-Valid' {
          }
          It 'Is false when Item.Path is invalid although Item.Name is non-null because Path has precedence.' {
             Mock -CommandName Test-Path -MockWith { $false <# assumes every path is invalid #> }
-            @(@{ Path = 'a:\notfound\file.txt' ; Name = 'Stark' }, [PSCustomObject]@{ Path = 'a:\notfound\file.txt' ; Name = 'Stark' }) | Test-Item -Valid | Should -Be ($false, $false)
+            @(@{ Path = 'a:\notfound\file.txt' ; Name = 'Stark' }, [PSCustomObject]@{ Path = 'a:\notfound\file.txt' ; Name = 'Stark' }) | Test-Item -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
          It 'Is true when Item.Path is valid although Item.Name is null because Path has precedence.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every path is valid #> }
@@ -106,10 +103,9 @@ Describe 'Test-Item-Valid' {
       }
 
       Context 'Validity check warns about any invalid Item.' {
+         Mock -CommandName Write-Warning
+         Mock -CommandName Test-Path -MockWith { $false <# assumes every path is invalid #> }
          It 'Warns about every property, whether null or invalid, for every invalid Item.' {
-            Mock -CommandName Write-Warning
-            Mock -CommandName Test-Path -MockWith { $false <# assumes every path is invalid #> }
-
             @(@{ Path = 'a:\folder\file.txt' ; Name = $null ; Condition = $null }, [PSCustomObject]@{ Path = 'a:\folder\file.txt' ; Name = $null ; Condition = $null }) | Test-Item -Valid | Should -Be ($false, $false)
 
             Assert-MockCalled -CommandName Write-Warning -Scope It -ParameterFilter { $Message -eq 'The following Item is invalid because it is either ill-formed or misses either a valid Path or Name property:' } -Times 2
@@ -119,9 +115,6 @@ Describe 'Test-Item-Valid' {
             Assert-MockCalled -CommandName Write-Warning -Times 8
          }
          It 'Warns about every property for every invalid Item.' {
-            Mock -CommandName Write-Warning
-            Mock -CommandName Test-Path -MockWith { $false <# assumes every path is invalid #> }
-
             @(@{ Path = 'a:\folder\file.txt' ; Name = 'Stark' ; Condition = $false }, [PSCustomObject]@{ Path = 'a:\folder\file.txt' ; Name = 'Stark' ; Condition = $false }) | Test-Item -Valid | Should -Be ($false, $false)
 
             Assert-MockCalled -CommandName Write-Warning -Scope It -ParameterFilter { $Message -eq 'The following Item is invalid because it is either ill-formed or misses either a valid Path or Name property:' } -Times 2

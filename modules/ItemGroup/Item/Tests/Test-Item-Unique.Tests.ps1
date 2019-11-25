@@ -23,32 +23,29 @@ Describe 'Test-Item-Unique' {
 
       Context 'Unicity check is conditionned by the Validity check.' {
          It 'ignores invalid Items during Unicity check.' {
-            Mock -CommandName Write-Warning # avoid cluttering Pester output
-
             $items = @( @{ Name = 'one' }, @{ Name = 'two' }, @{ Path = $null; Name = 'same' }, @{Path = $null; Name = 'same' } )
             # even though last two Items have the same Name they are invalid
-            Test-Item -Item $items -Valid | Should -Be @($true, $true, $false, $false)
+            Test-Item -Item $items -Valid -WarningAction SilentlyContinue | Should -Be @($true, $true, $false, $false)
             # and unicity check is consequently satisfied
-            Test-Item -Item $items -Unique | Should -Be $true
+            Test-Item -Item $items -Unique -WarningAction SilentlyContinue | Should -Be $true
 
             # whereas if all Items are assumed to be valid
             Mock -CommandName Test-Item -ParameterFilter { $Valid.IsPresent } -MockWith { @($true, $true, $true, $true) <# assumes Items are not valid #> } -Verifiable
             Test-Item -Item $items -Valid | Should -Be @($true, $true, $true, $true)
 
             # unicity check will not be satisfied anymore because the last two Items have the same Name
-            Test-Item -Item $items -Unique | Should -Be $false
+            Test-Item -Item $items -Unique -WarningAction SilentlyContinue | Should -Be $false
 
             Assert-VerifiableMock
          }
       }
 
       Context 'Unicity check when Items are given by argument.' {
-         Mock -CommandName Write-Warning # avoid cluttering Pester output
          It 'Is true when Items have different Names.' {
             Test-Item -Item @( @{ Name = 'one' }, [PSCustomObject]@{ Name = 'two' } ) -Unique | Should -Be $true
          }
          It 'Is false when Items have the same Name.' {
-            Test-Item -Item @( @{ Name = 'one' }, [PSCustomObject]@{ Name = 'one' } ) -Unique | Should -Be $false
+            Test-Item -Item @( @{ Name = 'one' }, [PSCustomObject]@{ Name = 'one' } ) -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is true when Items have different Paths.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
@@ -56,11 +53,11 @@ Describe 'Test-Item-Unique' {
          }
          It 'Is false when Items have the same Path.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
-            Test-Item -Item @( @{ Path = 'z:\one' }, [PSCustomObject]@{ Path = 'z:\one' } ) -Unique | Should -Be $false
+            Test-Item -Item @( @{ Path = 'z:\one' }, [PSCustomObject]@{ Path = 'z:\one' } ) -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is false when Items have different Names but the same Path beause Path has precedence.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
-            Test-Item -Item @( @{ Name = 'Stark' ; Path = 'z:\one' }, [PSCustomObject]@{ Stark = 'Parker' ; Path = 'z:\one' } ) -Unique | Should -Be $false
+            Test-Item -Item @( @{ Name = 'Stark' ; Path = 'z:\one' }, [PSCustomObject]@{ Stark = 'Parker' ; Path = 'z:\one' } ) -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is true when Items have the same Name but different Paths because Path has precedence.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
@@ -68,24 +65,23 @@ Describe 'Test-Item-Unique' {
          }
          It 'Is false for an array of Items.' {
             $items = @( @{Name = 'One' }, @{Name = 'Two' }, @{Name = 'One' }, @{Name = 'Two' }, @{Name = 'Three' } )
-            Test-Item -Item $items -Unique | Should -Be $false
+            Test-Item -Item $items -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is false for an array of array of Items.' {
             $items = @(
                @( @{Name = 'One' }, @{Name = 'Two' }, @{Name = 'One' } )
                @( @{Name = 'Two' }, @{Name = 'Three' } )
             )
-            Test-Item -Item $items -Unique | Should -Be $false
+            Test-Item -Item $items -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
       }
 
       Context 'Unicity check when Items are given by pipeline.' {
-         Mock -CommandName Write-Warning # avoid cluttering Pester output
          It 'Is true when Items have different Names.' {
             @{ Name = 'one' }, [PSCustomObject]@{ Name = 'two' } | Test-Item -Unique | Should -Be $true
          }
          It 'Is false when Items have the same Name.' {
-            @{ Name = 'one' }, [PSCustomObject]@{ Name = 'one' } | Test-Item -Unique | Should -Be $false
+            @{ Name = 'one' }, [PSCustomObject]@{ Name = 'one' } | Test-Item -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is true when Items have different Paths.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
@@ -93,11 +89,11 @@ Describe 'Test-Item-Unique' {
          }
          It 'Is false when Items have the same Path.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
-            @( @{ Path = 'z:\one' }, [PSCustomObject]@{ Path = 'z:\one' } ) | Test-Item -Unique | Should -Be $false
+            @( @{ Path = 'z:\one' }, [PSCustomObject]@{ Path = 'z:\one' } ) | Test-Item -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is false when Items have different Names but the same Path beause Path has precedence.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
-            @( @{ Name = 'Stark' ; Path = 'z:\one' }, [PSCustomObject]@{ Stark = 'Parker' ; Path = 'z:\one' } ) | Test-Item -Unique | Should -Be $false
+            @( @{ Name = 'Stark' ; Path = 'z:\one' }, [PSCustomObject]@{ Stark = 'Parker' ; Path = 'z:\one' } ) | Test-Item -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is true when Items have the same Name but different Paths because Path has precedence.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
@@ -105,21 +101,20 @@ Describe 'Test-Item-Unique' {
          }
          It 'Is false for an array of Items.' {
             $items = @( @{Name = 'One' }, @{Name = 'Two' }, @{Name = 'One' }, @{Name = 'Two' }, @{Name = 'Three' } )
-            $items | Test-Item -Unique | Should -Be $false
+            $items | Test-Item -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is false for an array of array of Items.' {
             $items = @(
                @( @{Name = 'One' }, @{Name = 'Two' }, @{Name = 'One' } )
                @( @{Name = 'Two' }, @{Name = 'Three' } )
             )
-            $items | Test-Item -Unique | Should -Be $false
+            $items | Test-Item -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
       }
 
       Context "Unicity check warns about any duplicate Item." {
+         Mock -CommandName Write-Warning
          It 'Warns about every property for every duplicate Item.' {
-            Mock -CommandName Write-Warning
-
             @{ Name = 'One' ; City = 'City' }, @{ Name = 'Two' ; City = 'City' }, @{ Name = 'One' ; City = 'City' } | Test-Item -Unique | Should -Be $false
 
             Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''One'' has been defined multiple times:' } -Times 2
@@ -128,8 +123,6 @@ Describe 'Test-Item-Unique' {
             Assert-MockCalled -CommandName Write-Warning -Times 6
          }
          It 'Warns about each duplicate Item given by the pipeline.' {
-            Mock -CommandName Write-Warning
-
             @{ Name = 'One' }, @{ Name = 'Two' }, @{ Name = 'One' }, @{ Name = 'Two' }, @{ Name = 'Three' } | Test-Item -Unique | Should -Be $false
 
             Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''One'' has been defined multiple times:' } -Times 2
@@ -139,8 +132,6 @@ Describe 'Test-Item-Unique' {
             Assert-MockCalled -CommandName Write-Warning -Times 8
          }
          It 'Warns about each duplicate Item in an array given by argument.' {
-            Mock -CommandName Write-Warning
-
             $item = @( @{Name = 'One' }, @{Name = 'Two' }, @{Name = 'One' }, @{Name = 'Two' }, @{Name = 'Three' } )
             Test-Item -Item $item -Unique | Should -Be $false
 
@@ -151,8 +142,6 @@ Describe 'Test-Item-Unique' {
             Assert-MockCalled -CommandName Write-Warning -Times 8
          }
          It 'Warns about each duplicate Item across arrays given by argument.' {
-            Mock -CommandName Write-Warning
-
             $items = @(
                @( @{Name = 'One' }, @{Name = 'Two' }, @{Name = 'One' } )
                @( @{Name = 'Two' }, @{Name = 'Three' } )
