@@ -48,7 +48,7 @@ Describe 'Compare-ItemGroup' {
          }
       }
 
-      Context "When both ItemGroups have a common group with no item" {
+      Context "When both ItemGroups have a common group with no Item" {
          It "should return nothing." {
             $left = @{ Group1 = @() }
             $right = @{ Group1 = @() }
@@ -56,7 +56,7 @@ Describe 'Compare-ItemGroup' {
          }
       }
 
-      Context "When both ItemGroups have a common group with one identical item" {
+      Context "When both ItemGroups have a common group with one identical Item" {
          It "should return nothing." {
             $left = @{ Group1 = @(ConvertTo-Item @{ Path = 'Item' }) }
             $right = @{ Group1 = @(ConvertTo-Item @{ Path = 'Item' }) }
@@ -64,7 +64,7 @@ Describe 'Compare-ItemGroup' {
          }
       }
 
-      Context "When both ItemGroups have a common group with one partially different item" {
+      Context "When both ItemGroups have a common group with one partially different Item" {
          It "should return Group1[0].Path Item1 <> Item2." {
             $left = @{ Group1 = @(ConvertTo-Item @{ Path = 'Item1'; Condition = $true }) }
             $right = @{ Group1 = @(ConvertTo-Item @{ Path = 'Item2'; Condition = $true }) }

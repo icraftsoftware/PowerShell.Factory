@@ -26,16 +26,16 @@ Describe 'Test-Item-Unique' {
             Mock -CommandName Write-Warning # avoid cluttering Pester output
 
             $items = @( @{ Name = 'one' }, @{ Name = 'two' }, @{ Path = $null; Name = 'same' }, @{Path = $null; Name = 'same' } )
-            # even though last two items have the same Name they are invalid
+            # even though last two Items have the same Name they are invalid
             Test-Item -Item $items -Valid | Should -Be @($true, $true, $false, $false)
             # and unicity check is consequently satisfied
             Test-Item -Item $items -Unique | Should -Be $true
 
-            # whereas if all items are assumed to be valid
-            Mock -CommandName Test-Item -ParameterFilter { $Valid.IsPresent } -MockWith { @($true, $true, $true, $true) <# assumes items are not valid #> } -Verifiable
+            # whereas if all Items are assumed to be valid
+            Mock -CommandName Test-Item -ParameterFilter { $Valid.IsPresent } -MockWith { @($true, $true, $true, $true) <# assumes Items are not valid #> } -Verifiable
             Test-Item -Item $items -Valid | Should -Be @($true, $true, $true, $true)
 
-            # unicity check will not be satisfied anymore because the last two items have the same Name
+            # unicity check will not be satisfied anymore because the last two Items have the same Name
             Test-Item -Item $items -Unique | Should -Be $false
 
             Assert-VerifiableMock

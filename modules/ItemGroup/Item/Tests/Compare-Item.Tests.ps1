@@ -21,13 +21,13 @@ Import-Module ItemGroup\Item -Force
 Describe 'Compare-Item' {
    InModuleScope Item {
 
-      Context "When both items are $null" {
+      Context "When both Items are $null" {
          It "should return nothing." {
             Compare-Item -ReferenceItem $null -DifferenceItem $null | Should -BeNullOrEmpty
          }
       }
 
-      Context "When both items have one identical entry" {
+      Context "When both Items have one identical entry" {
          It "should return nothing." {
             $left = ConvertTo-Item @{ a = "x" }
             $right = ConvertTo-Item @{ a = "x" }
@@ -35,7 +35,7 @@ Describe 'Compare-Item' {
          }
       }
 
-      Context "When reference item contains a key with a null value" {
+      Context "When reference Item contains a key with a null value" {
          It "should return a <." {
             $left = ConvertTo-Item @{ a = $null }
             $right = ConvertTo-Item @{ }
@@ -50,7 +50,7 @@ Describe 'Compare-Item' {
          }
       }
 
-      Context "When difference item contains a key with a null value" {
+      Context "When difference Item contains a key with a null value" {
          It "should return a >." {
             $left = ConvertTo-Item @{ }
             $right = ConvertTo-Item @{ a = $null }
@@ -65,7 +65,7 @@ Describe 'Compare-Item' {
          }
       }
 
-      Context "When reference and difference items have one property that is different" {
+      Context "When reference and difference Items have one property that is different" {
          It "should return a value <>." {
             $left = ConvertTo-Item @{ a = 'value' }
             $right = ConvertTo-Item @{ a = $null }
