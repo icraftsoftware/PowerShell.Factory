@@ -1,6 +1,6 @@
 ﻿#region Copyright & License
 
-# Copyright © 2012 - 2015 François Chabot, Yves Dierick
+# Copyright © 2012 - 2019 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
     GUID                  = '8a87b3ed-e4f6-43b7-ac9b-6b15546c306e'
     Author                = 'François Chabot'
     CompanyName           = 'be.stateless'
-    Copyright             = '(c) 2012 - 2015 be.stateless. All rights reserved.'
+    Copyright             = '(c) 2012 - 2019 be.stateless. All rights reserved.'
     Description           = 'Functions to configure BizTalk Server Host, Host Instance, Handlers, Ports, and Receive Locations.'
     ModuleToProcess       = 'Bts.psm1'
     ModuleVersion         = '1.0'

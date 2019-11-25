@@ -32,7 +32,7 @@ function Get-QuartzScheduler {
       $Port = 5555
    )
 
-   if ($script:scheduler -eq $null) {
+   if ($null -eq $script:scheduler) {
       $settings = New-Object -TypeName System.Collections.Specialized.NameValueCollection
       $settings['quartz.scheduler.instanceName'] = 'BizTalkPlatformScheduler';
       $settings['quartz.scheduler.proxy'] = 'true';
@@ -410,7 +410,7 @@ function AssertQuartzAgent {
    param()
 
    $agent = Get-Service -Name QuartzAgent -ErrorAction SilentlyContinue
-   if ($agent -eq $null) {
+   if ($null -eq $agent) {
       throw 'Quart.NET Scheduler Agent is not installed on this machine.'
    } elseif ($agent.Status -ne 'Running') {
       throw 'Quart.NET Scheduler Agent is not running.'

@@ -1,6 +1,6 @@
 ﻿#region Copyright & License
 
-# Copyright © 2012 - 2015 François Chabot, Yves Dierick
+# Copyright © 2012 - 2019 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,31 +40,30 @@ Set-StrictMode -Version Latest
 .NOTES
     © 2012 - 2015 be.stateless.
 #>
-function Build-BizTalkApplication
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Build-BizTalkApplication {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Position=0,Mandatory=$true)]
+        [Parameter(Position = 0, Mandatory = $true)]
         [string]
         $Application,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [int[]]
         $NoWarn,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet('Quiet', 'Minimal', 'Normal', 'Detailed', 'Diagnostic')]
         [string]
         $Verbosity,
 
-        [Parameter(DontShow,ValueFromRemainingArguments=$true)]
+        [Parameter(DontShow, ValueFromRemainingArguments = $true)]
         [object[]]
         $UnboundArguments
     )
     $rsf = Resolve-BizTalkApplicationSolutionFile $Application
     $arguments = @{
         Project = $rsf.MsBuildArg ;
-        Action = "Building $($rsf.Name) BizTalk Server Application solution"
+        Action  = "Building $($rsf.Name) BizTalk Server Application solution"
     }
     if ($PSBoundParameters.ContainsKey('NoWarn')) {
         $arguments.NoWarn = $NoWarn
@@ -106,46 +105,45 @@ function Build-BizTalkApplication
 .NOTES
     © 2012 - 2015 be.stateless.
 #>
-function Install-BizTalkApplication
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Install-BizTalkApplication {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Position=0,Mandatory=$true)]
+        [Parameter(Position = 0, Mandatory = $true)]
         [string]
         $Application,
 
-        [Parameter(Position=1)]
+        [Parameter(Position = 1)]
         [string]
         $TargetEnvironment,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet('Quiet', 'Minimal', 'Normal', 'Detailed', 'Diagnostic')]
         [string]
         $Verbosity,
 
-        [Parameter(DontShow,ValueFromRemainingArguments=$true)]
+        [Parameter(DontShow, ValueFromRemainingArguments = $true)]
         [object[]]
         $UnboundArguments = @()
     )
     DynamicParam {
         $rdf = Resolve-BizTalkApplicationDeploymentFile $Application
         $parameterDictionary = New-Object -Type System.Management.Automation.RuntimeDefinedParameterDictionary
-        & ${Probe-MSBuildProperties-Delegate} $rdf.MsBuildArg 'TargetEnvironment' | & ${New-DynamicParameter-Delegate} | ForEach-Object { $parameterDictionary.Add($_.Name, $_) }
+        & ${Find-MSBuildProperties-Delegate} $rdf.MsBuildArg 'TargetEnvironment' | & ${New-DynamicParameter-Delegate} | ForEach-Object { $parameterDictionary.Add($_.Name, $_) }
         $parameterDictionary
     }
 
     begin {
         $properties = @( $parameterDictionary.Keys |
-            Where-Object { $parameterDictionary.$_.IsSet } |
-            ForEach-Object { $parameterDictionary.$_ } |
-            Select-Object -Property Name, Value )
+                Where-Object { $parameterDictionary.$_.IsSet } |
+                ForEach-Object { $parameterDictionary.$_ } |
+                Select-Object -Property Name, Value )
     }
     process {
         #$rdf = Resolve-BizTalkApplicationDeploymentFile $Application
         $rte = Resolve-BizTalkApplicationTargetEnvironment $rdf.Name $TargetEnvironment
         $arguments = @{
             Project = $rdf.MsBuildArg ;
-            Action = "Deploying and configuring $($rdf.Name) BizTalk Server Application with $($rte.DisplayName) environment settings"
+            Action  = "Deploying and configuring $($rdf.Name) BizTalk Server Application with $($rte.DisplayName) environment settings"
         }
         if ($PSBoundParameters.ContainsKey('TargetEnvironment')) {
             $UnboundArguments = @('-TargetEnvironment', $rte.Name) + $UnboundArguments
@@ -153,7 +151,7 @@ function Install-BizTalkApplication
         if ($PSBoundParameters.ContainsKey('Verbosity')) {
             $arguments.Verbosity = $Verbosity
         }
-        $arguments.UnboundArguments = @($properties | ForEach-Object { @("-$($_.Name)", $_.Value)}) + $UnboundArguments
+        $arguments.UnboundArguments = @($properties | ForEach-Object { @("-$($_.Name)", $_.Value) }) + $UnboundArguments
         & ${Invoke-MSBuildCore-Delegate} @arguments `
             -Elevated `
             -Verbose:($PSBoundParameters['Verbose'] -eq $true) `
@@ -187,39 +185,38 @@ function Install-BizTalkApplication
 .NOTES
     © 2013 - 2015 be.stateless.
 #>
-function Uninstall-BizTalkApplication
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Uninstall-BizTalkApplication {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Position=0,Mandatory=$true)]
+        [Parameter(Position = 0, Mandatory = $true)]
         [string]
         $Application,
 
-        [Parameter(Position=1)]
+        [Parameter(Position = 1)]
         [string]
         $TargetEnvironment,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet('Quiet', 'Minimal', 'Normal', 'Detailed', 'Diagnostic')]
         [string]
         $Verbosity,
 
-        [Parameter(DontShow,ValueFromRemainingArguments=$true)]
+        [Parameter(DontShow, ValueFromRemainingArguments = $true)]
         [object[]]
         $UnboundArguments = @()
     )
     DynamicParam {
         $rdf = Resolve-BizTalkApplicationDeploymentFile $Application
         $parameterDictionary = New-Object -Type System.Management.Automation.RuntimeDefinedParameterDictionary
-        & ${Probe-MSBuildProperties-Delegate} $rdf.MsBuildArg 'TargetEnvironment' | & ${New-DynamicParameter-Delegate} | ForEach-Object { $parameterDictionary.Add($_.Name, $_) }
+        & ${Find-MSBuildProperties-Delegate} $rdf.MsBuildArg 'TargetEnvironment' | & ${New-DynamicParameter-Delegate} | ForEach-Object { $parameterDictionary.Add($_.Name, $_) }
         $parameterDictionary
     }
 
     begin {
         $properties = @( $parameterDictionary.Keys |
-            Where-Object { $parameterDictionary.$_.IsSet } |
-            ForEach-Object { $parameterDictionary.$_ } |
-            Select-Object -Property Name, Value )
+                Where-Object { $parameterDictionary.$_.IsSet } |
+                ForEach-Object { $parameterDictionary.$_ } |
+                Select-Object -Property Name, Value )
     }
     process {
         #$rdf = Resolve-BizTalkApplicationDeploymentFile $Application
@@ -228,7 +225,7 @@ function Uninstall-BizTalkApplication
             Project = $rdf.MsBuildArg ;
             #TODO ensure only one target is ever passed to Install-BizTalkApplication
             Targets = 'Undeploy' ;
-            Action = "Undeploying $($rdf.Name) BizTalk Server Application with $($rte.DisplayName) environment settings"
+            Action  = "Undeploying $($rdf.Name) BizTalk Server Application with $($rte.DisplayName) environment settings"
         }
         if ($PSBoundParameters.ContainsKey('TargetEnvironment')) {
             $UnboundArguments = @('-TargetEnvironment', $rte.Name) + $UnboundArguments
@@ -236,7 +233,7 @@ function Uninstall-BizTalkApplication
         if ($PSBoundParameters.ContainsKey('Verbosity')) {
             $arguments.Verbosity = $Verbosity
         }
-        $arguments.UnboundArguments = @($properties | ForEach-Object { @("-$($_.Name)", $_.Value)}) + $UnboundArguments
+        $arguments.UnboundArguments = @($properties | ForEach-Object { @("-$($_.Name)", $_.Value) }) + $UnboundArguments
         & ${Invoke-MSBuildCore-Delegate} @arguments `
             -Elevated `
             -Verbose:($PSBoundParameters['Verbose'] -eq $true) `
@@ -301,61 +298,60 @@ function Uninstall-BizTalkApplication
 .NOTES
     © 2012 - 2015 be.stateless.
 #>
-function Update-BizTalkApplication
-{
+function Update-BizTalkApplication {
     # http://powershell.com/cs/blogs/tobias/archive/2010/11/18/add-automatic-confirmation-and-whatif-to-your-scripts.aspx
     # http://blogs.msdn.com/b/powershell/archive/2008/12/23/powershell-v2-parametersets.aspx
-    [CmdletBinding(DefaultParametersetName='Any',SupportsShouldProcess=$true)]
+    [CmdletBinding(DefaultParametersetName = 'Any', SupportsShouldProcess = $true)]
     param(
-        [Parameter(Position=0,Mandatory=$true)]
+        [Parameter(Position = 0, Mandatory = $true)]
         [string]
         $Application,
 
-        [Parameter(Position=1)]
+        [Parameter(Position = 1)]
         [string]
         $TargetEnvironment,
 
-        [Parameter(ParameterSetName='All')]
+        [Parameter(ParameterSetName = 'All')]
         [switch]
         $All,
 
-        [Parameter(ParameterSetName='Any')]
+        [Parameter(ParameterSetName = 'Any')]
         [switch]
         $Artifacts,
 
-        [Parameter(ParameterSetName='Any')]
+        [Parameter(ParameterSetName = 'Any')]
         [switch]
         $Bindings,
 
-        [Parameter(ParameterSetName='Any')]
+        [Parameter(ParameterSetName = 'Any')]
         [switch]
         $Policies,
 
-        [Parameter(ParameterSetName='Any')]
+        [Parameter(ParameterSetName = 'Any')]
         [switch]
         $Bounce,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet('Quiet', 'Minimal', 'Normal', 'Detailed', 'Diagnostic')]
         [string]
         $Verbosity,
 
-        [Parameter(DontShow,ValueFromRemainingArguments=$true)]
+        [Parameter(DontShow, ValueFromRemainingArguments = $true)]
         [object[]]
         $UnboundArguments = @()
     )
     DynamicParam {
         $rdf = Resolve-BizTalkApplicationDeploymentFile $Application
         $parameterDictionary = New-Object -Type System.Management.Automation.RuntimeDefinedParameterDictionary
-        & ${Probe-MSBuildProperties-Delegate} $rdf.MsBuildArg 'TargetEnvironment' | & ${New-DynamicParameter-Delegate} | ForEach-Object { $parameterDictionary.Add($_.Name, $_) }
+        & ${Find-MSBuildProperties-Delegate} $rdf.MsBuildArg 'TargetEnvironment' | & ${New-DynamicParameter-Delegate} | ForEach-Object { $parameterDictionary.Add($_.Name, $_) }
         $parameterDictionary
     }
 
     begin {
         $properties = @( $parameterDictionary.Keys |
-            Where-Object { $parameterDictionary.$_.IsSet } |
-            ForEach-Object { $parameterDictionary.$_ } |
-            Select-Object -Property Name, Value )
+                Where-Object { $parameterDictionary.$_.IsSet } |
+                ForEach-Object { $parameterDictionary.$_ } |
+                Select-Object -Property Name, Value )
     }
     process {
         $All = $PsCmdlet.ParameterSetName -eq 'All'
@@ -392,7 +388,8 @@ function Update-BizTalkApplication
         }
         if ($task.Actions.Length -gt 0) {
             $arguments.Action = "Updating $($rdf.Name) BizTalk Server Application's $(Join-String -Strings $task.Actions -Separator ', ') with $($rte.DisplayName) environment settings then bouncing BizTalk Server host instances"
-        } else {
+        }
+        else {
             $arguments.Action = 'Bouncing BizTalk Server host instances'
         }
         if ($PSBoundParameters.ContainsKey('TargetEnvironment')) {
@@ -401,7 +398,7 @@ function Update-BizTalkApplication
         if ($PSBoundParameters.ContainsKey('Verbosity')) {
             $arguments.Verbosity = $Verbosity
         }
-        $arguments.UnboundArguments = @($properties | ForEach-Object { @("-$($_.Name)", $_.Value)}) + $UnboundArguments
+        $arguments.UnboundArguments = @($properties | ForEach-Object { @("-$($_.Name)", $_.Value) }) + $UnboundArguments
         & ${Invoke-MSBuildCore-Delegate} @arguments `
             -Elevated `
             -Verbose:($PSBoundParameters['Verbose'] -eq $true) `
@@ -411,19 +408,16 @@ function Update-BizTalkApplication
 
 #region TabExpansion Overrides / Private Probing and Resolution Helper Functions
 
-function Register-TabExpansions
-{
-    $global:options['CustomArgumentCompleters']['Application'] =  {
+function Register-TabExpansions {
+    $global:options['CustomArgumentCompleters']['Application'] = {
         param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
-        if ($commandName -eq 'Build-BizTalkApplication')
-        {
-            Probe-BizTalkApplicationSolution $wordToComplete | ForEach-Object {
+        if ($commandName -eq 'Build-BizTalkApplication') {
+            Find-BizTalkApplicationSolution $wordToComplete | ForEach-Object {
                 New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', "$_.sln"
             }
         }
-        else
-        {
-            Probe-BizTalkApplicationDeployment $wordToComplete | ForEach-Object {
+        else {
+            Find-BizTalkApplicationDeployment $wordToComplete | ForEach-Object {
                 New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', "$_.Deployment.btdfproj"
             }
         }
@@ -431,28 +425,25 @@ function Register-TabExpansions
 
     $global:options['CustomArgumentCompleters']['TargetEnvironment'] = {
         param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
-        Probe-BizTalkApplicationTargetEnvironment $fakeBoundParameter.Application $wordToComplete | ForEach-Object {
+        Find-BizTalkApplicationTargetEnvironment $fakeBoundParameter.Application $wordToComplete | ForEach-Object {
             New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', $_
         }
     }
 }
 
-function Unregister-TabExpansions
-{
+function Unregister-TabExpansions {
     $global:options['CustomArgumentCompleters'].Remove('Application')
     $global:options['CustomArgumentCompleters'].Remove('TargetEnvironment')
 }
 
-function Probe-BizTalkApplicationDeployment([string]$pattern)
-{
+function Find-BizTalkApplicationDeployment([string]$pattern) {
     if ($pattern) { $pattern = $pattern.Trim() }
-    $applicationNames = Probe-BizTalkApplicationNames
+    $applicationNames = Find-BizTalkApplicationNames
     $applicationNames | Where-Object { $_ -match $pattern }
 }
 
-function Probe-BizTalkApplicationSolution([string]$pattern)
-{
-    $applicationNames = Probe-BizTalkApplicationNames
+function Find-BizTalkApplicationSolution([string]$pattern) {
+    $applicationNames = Find-BizTalkApplicationNames
 
     if ($pattern) { $pattern = $pattern.Trim() }
     $files = Get-ChildItem -Path . -Filter "$pattern*.sln" |
@@ -461,8 +452,7 @@ function Probe-BizTalkApplicationSolution([string]$pattern)
     $files | Sort-Object -Unique
 }
 
-function Probe-BizTalkApplicationNames()
-{
+function Find-BizTalkApplicationNames() {
     $projectNames = Get-ChildItem -Path '.', '.\Deployment' -Filter *.btdfproj | ForEach-Object {
         $xml = [xml](Get-Content $_.FullName)
         $nsm = New-Object System.Xml.XmlNamespaceManager($xml.NameTable)
@@ -472,8 +462,7 @@ function Probe-BizTalkApplicationNames()
     @($projectNames) | Sort-Object -Unique
 }
 
-function Probe-BizTalkApplicationTargetEnvironment([string]$application, [string]$pattern)
-{
+function Find-BizTalkApplicationTargetEnvironment([string]$application, [string]$pattern) {
     if ($application) { $application = $application.Trim() }
     if ($pattern) { $pattern = $pattern.Trim() }
     $file = (Resolve-BizTalkApplicationSettingsFileGenerator $application).MsBuildArg
@@ -485,11 +474,10 @@ function Probe-BizTalkApplicationTargetEnvironment([string]$application, [string
     # default value
     $te = $xml.SelectNodes("//s0:Worksheet//s0:Row[s0:Cell[1][s0:Data/text() = 'TargetEnvironment']]/s0:Cell[position() > 1]/s0:Data/text()", $nsm)
     $te | Select-Object -ExpandProperty Value -Unique `
-        | Where-Object { $_ -match "^$pattern" }
+    | Where-Object { $_ -match "^$pattern" }
 }
 
-function Resolve-BizTalkApplicationDeploymentFile([string]$application)
-{
+function Resolve-BizTalkApplicationDeploymentFile([string]$application) {
     if ($application) { $application = $application.Trim() }
     $paths = @('.', '.\Deployment') | Where-Object { Test-Path -Path $_ }
     $file = Get-ChildItem -Path $paths -Filter *.btdfproj | Where-Object {
@@ -498,14 +486,13 @@ function Resolve-BizTalkApplicationDeploymentFile([string]$application)
         $nsm.AddNamespace('s0', 'http://schemas.microsoft.com/developer/msbuild/2003')
         $xml.SelectSingleNode('//s0:ProjectName', $nsm).InnerText -eq $application
     } | Get-Unique | Select-Object -First 1
-    if (-not(Test-Path -Path $file.FullName)) {
-        throw "No BTDF deployment file found for $application BizTalk Server Application!"
-    }
-    @{ Name = $application ; MsBuildArg = (Resolve-Path $file.FullName -Relative) }
+if (-not(Test-Path -Path $file.FullName)) {
+    throw "No BTDF deployment file found for $application BizTalk Server Application!"
+}
+@{ Name = $application ; MsBuildArg = (Resolve-Path $file.FullName -Relative) }
 }
 
-function Resolve-BizTalkApplicationSettingsFileGenerator([string]$application)
-{
+function Resolve-BizTalkApplicationSettingsFileGenerator([string]$application) {
     if ($application) { $application = $application.Trim() }
     $paths = @('.\Deployment\EnvironmentSettings', '.\EnvironmentSettings') |
         Where-Object { Test-Path -Path $_ }
@@ -518,8 +505,7 @@ function Resolve-BizTalkApplicationSettingsFileGenerator([string]$application)
     @{ Name = $application ; MsBuildArg = (Resolve-Path $file.FullName -Relative) }
 }
 
-function Resolve-BizTalkApplicationSolutionFile([string]$application)
-{
+function Resolve-BizTalkApplicationSolutionFile([string]$application) {
     if ($application) { $application = $application.Trim() }
     $file = "$application.sln"
     if (-not(Test-Path -Path .\$file)) {
@@ -528,10 +514,9 @@ function Resolve-BizTalkApplicationSolutionFile([string]$application)
     @{ Name = $application ; MsBuildArg = (Resolve-Path $file -Relative) }
 }
 
-function Resolve-BizTalkApplicationTargetEnvironment([string]$application, [string]$targetEnvironment)
-{
+function Resolve-BizTalkApplicationTargetEnvironment([string]$application, [string]$targetEnvironment) {
     if ($application) { $application = $application.Trim() }
-    $tes = @(Probe-BizTalkApplicationTargetEnvironment $application)
+    $tes = @(Find-BizTalkApplicationTargetEnvironment $application)
 
     if ($targetEnvironment) {
         $targetEnvironment = $targetEnvironment.Trim()
@@ -539,7 +524,8 @@ function Resolve-BizTalkApplicationTargetEnvironment([string]$application, [stri
             throw "$targetEnvironment target environment not found for $application BizTalk Server Application!"
         }
         @{ DisplayName = $targetEnvironment ; Name = $targetEnvironment }
-    } else {
+    }
+    else {
         # fall back on default target environment as no one was given, which is supposed to be the first one
         @{ DisplayName = "default ($($tes[0]))" }
     }
@@ -569,7 +555,7 @@ elseif (Test-Path -Path ($btsPath -f '2009')) {
 # friend function delegates
 ${Invoke-MSBuildCore-Delegate} = (& (Get-Module MSBuild) { (Get-Item function:Invoke-MSBuildCore) })
 ${New-DynamicParameter-Delegate} = (& (Get-Module MSBuild) { (Get-Item function:New-DynamicParameter) })
-${Probe-MSBuildProperties-Delegate} = (& (Get-Module MSBuild) { (Get-Item function:Probe-MSBuildProperties) })
+${Find-MSBuildProperties-Delegate} = (& (Get-Module MSBuild) { (Get-Item function:Find-MSBuildProperties) })
 
 New-Alias -Name bba -Value Build-BizTalkApplication
 New-Alias -Name iba -Value Install-BizTalkApplication

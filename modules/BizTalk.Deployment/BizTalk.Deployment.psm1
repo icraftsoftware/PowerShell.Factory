@@ -1,6 +1,6 @@
 #region Copyright & License
 
-# Copyright © 2012 - 2017 François Chabot
+# Copyright © 2012 - 2018 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,65 @@
 #endregion
 
 Set-StrictMode -Version Latest
+
+#TODO renaming to Install-BizTalkApplication but needs resolution of clash with Btdf module
+function Install-BizTalkApplication2 {
+   [CmdletBinding()]
+   [OutputType([void])]
+   param(
+      [Parameter(Mandatory = $true)]
+      [hashtable[]]
+      $ItemGroup,
+
+      # TODO should come from item group
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $ApplicationName,
+
+      # TODO should come from item group
+      [Parameter()]
+      [string]
+      $ApplicationDescription,
+
+      [Parameter(Mandatory = $true)]
+      [ValidateNotNullOrEmpty()]
+      [string]
+      $TargetEnvironment,
+
+      [Parameter()]
+      [switch]
+      $SkipMgmtDbDeployment,
+
+      [Parameter()]
+      [switch]
+      $SkipInstallUtil,
+
+      [Parameter()]
+      [switch]
+      $SkipUndeploy,
+
+      [Parameter()]
+      [switch]
+      $TerminateServiceInstances,
+
+      [Parameter()]
+      [scriptblock[]]
+      $Tasks = ([scriptblock] {})
+   )
+   begin {
+      $script:ItemGroups = Expand-ItemGroup -ItemGroup $ItemGroup
+   }
+   process {
+      Invoke-Build Deploy {
+         . BizTalk.Deployment.Tasks
+
+         foreach ($taskBlock in $Tasks) {
+            . $taskBlock
+         }
+      }
+   }
+}
 
 function Get-AssemblyName {
    [CmdletBinding()]
@@ -138,7 +197,7 @@ function Test-Application {
       $ManagementDatabaseName = (Get-RegisteredMgmtDbName)
    )
    Use-Object ($catalog = Get-BizTalkCatalog $ManagementDatabaseServer $ManagementDatabaseName) {
-      $catalog.Applications[$Name] -ne $null
+      $null -ne $catalog.Applications[$Name]
    }
 }
 
@@ -166,7 +225,7 @@ function Get-BizTalkCatalog {
    }
    catch {
       $disposable = [System.IDisposable]$catalog
-      if ($disposable -ne $null) {
+      if ($null -ne $disposable) {
          $disposable.Dispose()
       }
    }
@@ -192,7 +251,7 @@ function Get-BizTalkController {
    }
    catch {
       $disposable = [System.IDisposable]$controller
-      if ($disposable -ne $null) {
+      if ($null -ne $disposable) {
          $disposable.Dispose()
       }
    }
@@ -202,7 +261,7 @@ function Get-RegisteredMgmtDbName {
    [CmdletBinding()]
    [OutputType([string])]
    param()
-   if ($MyInvocation.MyCommand.Module.PrivateData['MgmtDbName'] -eq $null) {
+   if ($null -eq $MyInvocation.MyCommand.Module.PrivateData['MgmtDbName']) {
       $MyInvocation.MyCommand.Module.PrivateData['MgmtDbName'] = Get-BizTalkAdministrationRegistryKeyValue 'MgmtDBName'
    }
    $MyInvocation.MyCommand.Module.PrivateData['MgmtDbName']
@@ -212,7 +271,7 @@ function Get-RegisteredMgmtDbServer {
    [CmdletBinding()]
    [OutputType([string])]
    param()
-   if ($MyInvocation.MyCommand.Module.PrivateData['MgmtDbServer'] -eq $null) {
+   if ($null -eq $MyInvocation.MyCommand.Module.PrivateData['MgmtDbServer']) {
       $MyInvocation.MyCommand.Module.PrivateData['MgmtDbServer'] = Get-BizTalkAdministrationRegistryKeyValue 'MgmtDBServer'
    }
    $MyInvocation.MyCommand.Module.PrivateData['MgmtDbServer']
@@ -229,7 +288,7 @@ function Get-BizTalkAdministrationRegistryKeyValue {
    Use-Object ($hklm = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry32)) {
       $keyPath = 'SOFTWARE\Microsoft\Biztalk Server\3.0\Administration'
       Use-Object ($key = $hklm.OpenSubKey($keyPath)) {
-         if ($key -eq $null) {
+         if ($null -eq $key) {
             throw "Cannot find registry key '$($hklm.Name)\$keyPath'"
          }
          [string]$key.GetValue($Name)
@@ -255,7 +314,7 @@ function Use-Object {
       . $ScriptBlock
    }
    finally {
-      if ($Object -ne $null) {
+      if ($null -ne $Object) {
          $Object.Dispose()
       }
    }
@@ -276,7 +335,7 @@ function Use-Object {
 [accelerators]::Add('ServiceClass', 'Microsoft.BizTalk.Operations.ServiceClass')
 [accelerators]::Add('ServiceInstance', 'Microsoft.BizTalk.Operations.MessageBoxServiceInstance')
 
-Export-ModuleMember -Function Get-AssemblyName, Stop-Application, Test-Application
+Export-ModuleMember -Function Get-AssemblyName, Install-BizTalkApplication2, Stop-Application, Test-Application
 
 # https://github.com/nightroman/Invoke-Build/tree/master/Tasks/Import
 # https://github.com/nightroman/Invoke-Build/issues/73, Importing Tasks

@@ -1,6 +1,6 @@
 #region Copyright & License
 
-# Copyright © 2012 - 2017 François Chabot
+# Copyright © 2012 - 2018 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -81,11 +81,18 @@ task Import-Bindings Expand-Bindings, {
 }
 task Expand-Bindings {
    Get-TaskItemGroup -Task $Task | ForEach-Object -Process {
-      Expand-Bindings -Path $_.Path `
-         -TargetEnvironment $TargetEnvironment `
-         -BindingFilePath "$($_.Path).xml" `
-         -EnvironmentSettingOverridesRootPath $Item.EnvironmentSettingOverridesRootPath `
-         -AssemblyProbingPaths $Item.AssemblyProbingPaths
+      $arguments = @{
+         Path              = $_.Path
+         TargetEnvironment = $TargetEnvironment
+         BindingFilePath   = "$($_.Path).xml"
+      }
+      if (Test-Item -Item $_ -Property 'EnvironmentSettingOverridesRootPath') {
+         $arguments.Add('EnvironmentSettingOverridesRootPath', $_.EnvironmentSettingOverridesRootPath)
+      }
+      if (Test-Item -Item $_ -Property 'AssemblyProbingPaths') {
+         $arguments.Add('AssemblyProbingPaths', $_.AssemblyProbingPaths)
+      }
+      Expand-Bindings @arguments
    }
 }
 task Install-FileAdapterPaths {}

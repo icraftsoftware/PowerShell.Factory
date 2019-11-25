@@ -228,8 +228,8 @@ function Invoke-MSBuild {
         $properties = @(
             $parameterDictionary.Keys |
                 Where-Object { $parameterDictionary.$_.IsSet } |
-                    ForEach-Object { $parameterDictionary.$_ } |
-                        Select-Object -Property Name, Value
+                ForEach-Object { $parameterDictionary.$_ } |
+                Select-Object -Property Name, Value
         )
     }
     process {
@@ -447,7 +447,7 @@ function Test-HintPath {
                     Where-Object { $_.Include -notmatch '^System|^Microsoft\.Csharp' }
                 $badHintReferences = $xml.SelectNodes('//ns:Reference[ns:HintPath]', $nsm) |
                     Where-Object { $_.Include -notmatch '^System|^Microsoft\.Csharp' } |
-                        Where-Object { $_.HintPath -notmatch '\.\.\\packages\\' }
+                    Where-Object { $_.HintPath -notmatch '\.\.\\packages\\' }
                 if (($noHintReferences | Test-Any) -or ($badHintReferences | Test-Any)) {
                     Write-Output $projectFile.Name
                     if ($Detailed) {
@@ -539,7 +539,7 @@ function Find-ToolStudioVersions([string]$pattern) {
     # https://github.com/Microsoft/MSBuildLocator/
     Get-ChildItem HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions -Name |
         Where-Object { $_ -match '\d+\.\d+' } |
-            Sort-Object { [float]$_ }
+        Sort-Object { [float]$_ }
 }
 
 function Resolve-ProjectFile([string]$project) {

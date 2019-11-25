@@ -191,16 +191,16 @@ function Switch-VisualStudioEnvironment {
         else {
             $path = Get-VSSetupInstance |
                 Where-Object -FilterScript { $_.CatalogInfo['ProductLineVersion'] -eq $Version } |
-                    Select-Object -ExpandProperty InstallationPath
+                Select-Object -ExpandProperty InstallationPath
             $batchPath = Join-Path -Path $path 'Common7\Tools\vsdevcmd.bat'
         }
         if ($PsCmdlet.ShouldProcess("Environment variables", "Pushing EnvironmentBlock for Visual Studio $Version")) {
-            if (Test-Path $batchPath) { 
+            if (Test-Path $batchPath) {
                 Push-EnvironmentBlock -Description "VisualStudioVersion=$Version"
                 Invoke-BatchFile $batchPath
             }
             else {
-                throw "Version $Version of Visual Studio is not supported!" 
+                throw "Version $Version of Visual Studio is not supported!"
             }
         }
     }
@@ -271,7 +271,7 @@ function Get-VisualStudioVersionNumbers {
         if (Test-Path $path) {
             $installedVisualStudioVersionNumbers = Get-ChildItem -Path $path |
                 Select-Object -ExpandProperty PSChildName |
-                    Where-Object { $_ -match '^\d+\.\d+$' }
+                Where-Object { $_ -match '^\d+\.\d+$' }
         }
         $installedVisualStudioVersionNumbers = @($installedVisualStudioVersionNumbers)
         $MyInvocation.MyCommand.Module.PrivateData['InstalledVisualStudioVersionNumbers'] = $installedVisualStudioVersionNumbers
@@ -299,7 +299,7 @@ function Convert-VisualStudioVersionNumber([string]$versionNumber) {
         default {
             $version = Get-VSSetupInstance |
                 Select-VSSetupInstance -Latest -Version ("[{0},{1:00.0})" -f $versionNumber, [Math]::Floor([double]$versionNumber + 1)) |
-                    ForEach-Object -Process { $_.CatalogInfo['ProductLineVersion'] }
+                ForEach-Object -Process { $_.CatalogInfo['ProductLineVersion'] }
             if ($null -eq $version) { throw "Visual Studio Version Number $versionNumber is not supported." }
             $version
         }
@@ -309,8 +309,8 @@ function Convert-VisualStudioVersionNumber([string]$versionNumber) {
 function Find-VisualStudioVersions([string]$pattern) {
     Get-VisualStudioVersionNumbers |
         Sort-Object { [double]$_ } |
-            ForEach-Object { Convert-VisualStudioVersionNumber $_ } |
-                Where-Object { if ($null -eq $pattern) { $true } else { $_ -match $pattern } }
+        ForEach-Object { Convert-VisualStudioVersionNumber $_ } |
+        Where-Object { if ($null -eq $pattern) { $true } else { $_ -match $pattern } }
 }
 
 #endregion Private Probing and Resolution Helper Functions

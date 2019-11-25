@@ -71,18 +71,18 @@ function ConvertTo-Item {
         @(
             $HashTable |
                 Where-Object -FilterScript { $_.Count } <# filter out empty hashtables #> -PipelineVariable currentHashTable |
-                    ForEach-Object -Process {
-                        $item = New-Object -TypeName PSCustomObject
-                        $currentHashTable.Keys | ForEach-Object -Process {
-                            if ($currentHashTable.$_ -is [ScriptBlock]) {
-                                Add-Member -InputObject $item -MemberType ScriptProperty -Name $_ -Value $currentHashTable.$_
-                            }
-                            else {
-                                Add-Member -InputObject $item -MemberType NoteProperty -Name $_ -Value $currentHashTable.$_
-                            }
+                ForEach-Object -Process {
+                    $item = New-Object -TypeName PSCustomObject
+                    $currentHashTable.Keys | ForEach-Object -Process {
+                        if ($currentHashTable.$_ -is [ScriptBlock]) {
+                            Add-Member -InputObject $item -MemberType ScriptProperty -Name $_ -Value $currentHashTable.$_
                         }
-                        $item
+                        else {
+                            Add-Member -InputObject $item -MemberType NoteProperty -Name $_ -Value $currentHashTable.$_
+                        }
                     }
+                    $item
+                }
         )
     }
 }
@@ -243,9 +243,9 @@ function Test-Item {
                 # Path property has the precedence over the Name property when grouping Items
                 $allValidItems |
                     Group-Object -Property { if (Test-Item -Item $_ -Property Path) { $_.Path } else { $_.Name } } |
-                        Where-Object -FilterScript { $_.Count -gt 1 } |
-                            Trace-DuplicateItem |
-                                Test-None
+                    Where-Object -FilterScript { $_.Count -gt 1 } |
+                    Trace-DuplicateItem |
+                    Test-None
             }
         }
     }

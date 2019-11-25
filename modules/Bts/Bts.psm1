@@ -1,6 +1,6 @@
 ﻿#region Copyright & License
 
-# Copyright © 2012 - 2015 François Chabot, Yves Dierick
+# Copyright © 2012 - 2019 François Chabot
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,8 +33,7 @@ Set-StrictMode -Version Latest
 .NOTES
     © 2012 be.stateless.
 #>
-function Assert-BizTalkServer
-{
+function Assert-BizTalkServer {
     [CmdletBinding()]
     param()
 
@@ -54,8 +53,7 @@ function Assert-BizTalkServer
 .NOTES
     © 2012 be.stateless.
 #>
-function Test-BizTalkServer
-{
+function Test-BizTalkServer {
     [CmdletBinding()]
     param()
 
@@ -80,22 +78,21 @@ function Test-BizTalkServer
 .NOTES
     © 2012 be.stateless.
 #>
-function Add-BizTalkProvider
-{
+function Add-BizTalkProvider {
     [CmdletBinding()]
     param()
 
     if (-not(Test-BizTalkProvider)) {
         # check among the Windows PowerShell snap-ins that have been registered on this computer
-        $registeredSnapin = Get-PSSnapin -Registered | ? { $_.Name -eq "BizTalkFactory.PowerShell.Extensions" }
-        if ($registeredSnapin -eq $null) {
+        $registeredSnapin = Get-PSSnapin -Registered | Where-Object { $_.Name -eq "BizTalkFactory.PowerShell.Extensions" }
+        if ($null -eq $registeredSnapin) {
             throw "BizTalk PowerShell Provider snap-in is not installed on this computer!"
         }
 
         Write-Verbose "Adding BizTalk PowerShell Provider snap-in to the current session..."
         # see http://psbiztalk.codeplex.com/workitem/4575, otherise it won't work if MgmtDb is not local
         $InitializeDefaultBTSDrive = $false
-        Add-PSSnapIn BizTalkFactory.PowerShell.Extensions
+        Add-PSSnapin BizTalkFactory.PowerShell.Extensions
 
         Write-Verbose "Adding BizTalk PowerShell Drive Provider to the current session..."
         # allow to get to the MgmtDbServer & the MgmtDbName
@@ -144,8 +141,7 @@ function Add-BizTalkProvider
 .NOTES
     © 2012 be.stateless.
 #>
-function Assert-BizTalkProvider
-{
+function Assert-BizTalkProvider {
     [CmdletBinding()]
     param(
         [switch]
@@ -172,8 +168,7 @@ function Assert-BizTalkProvider
 .NOTES
     © 2012 be.stateless.
 #>
-function Test-BizTalkProvider
-{
+function Test-BizTalkProvider {
     [CmdletBinding()]
     param()
 
@@ -181,38 +176,13 @@ function Test-BizTalkProvider
     Assert-32bitProcess
 
     # check among the Windows PowerShell snap-ins that have been added to the current session
-    $snapin = Get-PSSnapin | ? { $_.Name -eq "BizTalkFactory.PowerShell.Extensions" }
-    [bool]($snapin -ne $null)
+    $snapin = Get-PSSnapin | Where-Object { $_.Name -eq "BizTalkFactory.PowerShell.Extensions" }
+    [bool]($null -ne $snapin)
 }
 
 #endregion
 
-#region BizTalk Server Host (Test/New/Update)
-
-<#
-.SYNOPSIS
-    Returns whether a Microsoft BizTalk Server host exists.
-.DESCRIPTION
-    This command will return $true if the Microsoft BizTalk Server host exists.
-.PARAMETER Name
-    The name of the BizTalk host.
-.OUTPUTS
-    True if the BizTalk Server host exists; False otherwise.
-.EXAMPLE
-    PS> Test-BizTalkHost -Name 'Transmit Host'
-.NOTES
-    © 2015 be.stateless.
-#>
-function Test-BizTalkHost
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]
-        $Name
-    )
-    [bool] (Get-CimInstance -Namespace root/MicrosoftBizTalkServer -ClassName MSBTS_HostSetting -Filter "Name='$Name'")
-}
+#region BizTalk Server Host (New/Update/Test)
 
 <#
 .SYNOPSIS
@@ -248,20 +218,19 @@ function Test-BizTalkHost
 .NOTES
     © 2015 be.stateless.
 #>
-function New-BizTalkHost
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function New-BizTalkHost {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Name,
 
-        [Parameter(Mandatory=$true)]
-        [ValidateSet('InProcess','Isolated')]
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('InProcess', 'Isolated')]
         [string]
         $Type,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Group,
 
@@ -283,13 +252,13 @@ function New-BizTalkHost
     elseif ($PsCmdlet.ShouldProcess("BizTalk Group", "Creating $Type '$Name' host")) {
         Write-Verbose "`t Creating $Type '$Name' host with '$Group' Windows group..."
         New-CimInstance -Namespace root/MicrosoftBizTalkServer -ClassName MSBTS_HostSetting -Property @{
-            Name = $Name
-            HostType = [Uint32](?: { $Type -eq 'Isolated' } { 2 } { 1 })
-            NTGroupName = $Group
+            Name            = $Name
+            HostType        = [Uint32](?: { $Type -eq 'Isolated' } { 2 } { 1 })
+            NTGroupName     = $Group
             IsHost32BitOnly = [bool]$x86
-            IsDefault = [bool]$Default
-            HostTracking = [bool]$Tracking
-            AuthTrusted = [bool]$Trusted
+            IsDefault       = [bool]$Default
+            HostTracking    = [bool]$Tracking
+            AuthTrusted     = [bool]$Trusted
         } | Out-Null
         Write-Host "`t $Type '$Name' host has been created."
     }
@@ -319,13 +288,12 @@ function New-BizTalkHost
     PS> Update-BizTalkHost -Name 'Transmit Host' -x86:$false -Verbose
     With the -Verbose switch, this command will confirm this process is not 32 bit.
 .NOTES
-    © 2015 be.stateless.
+    © 2019 be.stateless.
 #>
-function Update-BizTalkHost
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Update-BizTalkHost {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Name,
 
@@ -341,6 +309,40 @@ function Update-BizTalkHost
         [bool]
         $Trusted
     )
+
+    function Set-BizTalkHostProperty {
+        [CmdletBinding(SupportsShouldProcess = $true)]
+        param(
+            [Parameter(Mandatory = $true)]
+            [string]
+            $Name,
+    
+            [Parameter(Mandatory = $true)]
+            [string]
+            $Property,
+    
+            [Parameter(Mandatory = $true)]
+            [object]
+            $Value,
+    
+            [Parameter(Mandatory = $true)]
+            [string]
+            $ActionToPerform,
+    
+            [Parameter(Mandatory = $true)]
+            [string]
+            $PerformedAction
+        )
+    
+        $h = Get-CimInstance -Namespace root/MicrosoftBizTalkServer -ClassName MSBTS_HostSetting -Filter "Name='$Name'"
+        if ($h.$Property -ne $value -and $PsCmdlet.ShouldProcess("BizTalk Group", $ActionToPerform)) {
+            Write-Verbose "`t $ActionToPerform..."
+            $h.$Property = $Value
+            $h | Set-CimInstance | Out-Null
+            Write-Verbose "`t $PerformedAction."
+        }
+    }
+
     if (Test-BizTalkHost -Name $Name) {
         if ($PSBoundParameters.ContainsKey('x86')) {
             $subject = "'$Name' host's 32-bit only restriction"
@@ -349,7 +351,7 @@ function Update-BizTalkHost
                 -PerformedAction ("{0} has been {1}" -f $Subject, (?: { $x86 } { 'enabled' } { 'disabled' } ))
         }
 
-        if($Default.IsPresent -and -not $btsHost.IsDefault) {
+        if ($Default.IsPresent -and -not $btsHost.IsDefault) {
             Set-BizTalkHostProperty -Name $Name -Property IsDefault -Value $Default `
                 -ActionToPerform "Setting '$Name' host as default BizTalk Group host" `
                 -PerformedAction "'$Name' host has been set as default BizTalk Group host"
@@ -375,45 +377,32 @@ function Update-BizTalkHost
 }
 
 <#
- # Private Helper Functions
- #>
- function Set-BizTalkHostProperty
- {
+.SYNOPSIS
+    Returns whether a Microsoft BizTalk Server host exists.
+.DESCRIPTION
+    This command will return $true if the Microsoft BizTalk Server host exists.
+.PARAMETER Name
+    The name of the BizTalk host.
+.OUTPUTS
+    True if the BizTalk Server host exists; False otherwise.
+.EXAMPLE
+    PS> Test-BizTalkHost -Name 'Transmit Host'
+.NOTES
+    © 2015 be.stateless.
+#>
+function Test-BizTalkHost {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
-        $Name,
-
-        [Parameter(Mandatory=$true)]
-        [string]
-        $Property,
-
-        [Parameter(Mandatory=$true)]
-        [object]
-        $Value,
-
-        [Parameter(Mandatory=$true)]
-        [string]
-        $ActionToPerform,
-
-        [Parameter(Mandatory=$true)]
-        [string]
-        $PerformedAction
+        $Name
     )
-
-    $h = Get-CimInstance -Namespace root/MicrosoftBizTalkServer -ClassName MSBTS_HostSetting -Filter "Name='$Name'"
-    if ($h.$Property -ne $value -and $PsCmdlet.ShouldProcess("BizTalk Group", $ActionToPerform)) {
-        Write-Verbose "`t $ActionToPerform..."
-        $h.$Property = $Value
-        $h | Set-CimInstance | Out-Null
-        Write-Verbose "`t $PerformedAction."
-    }
+    [bool] (Get-CimInstance -Namespace root/MicrosoftBizTalkServer -ClassName MSBTS_HostSetting -Filter "Name='$Name'")
 }
 
 #endregion
 
-#region BizTalk Server host instance (Disable/Enable/New/Restart/Start/Stop)
+#region BizTalk Server host instance (Disable/Enable/New/Remove/Restart/Start/Stop/Test)
 
 <#
 .SYNOPSIS
@@ -433,11 +422,10 @@ function Update-BizTalkHost
 .NOTES
     © 2015 be.stateless.
 #>
-function Disable-BizTalkHostInstance
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Disable-BizTalkHostInstance {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Name,
 
@@ -476,11 +464,10 @@ function Disable-BizTalkHostInstance
 .NOTES
     © 2015 be.stateless.
 #>
-function Enable-BizTalkHostInstance
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Enable-BizTalkHostInstance {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Name,
 
@@ -531,19 +518,18 @@ function Enable-BizTalkHostInstance
 .NOTES
     © 2015 be.stateless.
 #>
-function New-BizTalkHostInstance
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function New-BizTalkHostInstance {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Name,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $User,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Password,
 
@@ -576,45 +562,15 @@ function New-BizTalkHostInstance
             $hi = Get-CimInstance -Namespace root/MicrosoftBizTalkServer -Class MSBTS_HostInstance -Filter "Name='Microsoft BizTalk Server $Name $Server'"
             $hi.IsDisabled = [bool]$Disabled
             $hi | Set-CimInstance
-        } elseif ($Started) {
+        }
+        elseif ($Started) {
             $hi.Start() | Out-Null
-        } else {
+        }
+        else {
             $hi.Stop() | Out-Null
         }
         Write-Host "`t '$Name' host instance on '$Server' server has been created."
     }
-}
-
-<#
-.SYNOPSIS
-    Returns whether a Microsoft BizTalk Server host instance exists.
-.DESCRIPTION
-    This command will return $true if the Microsoft BizTalk Server host instance exists.
-.PARAMETER Name
-    The name of the BizTalk host.
-.PARAMETER Server
-    The server on which the host instance is tested for existence.
-.OUTPUTS
-    True if the BizTalk Server host instance exists; False otherwise.
-.EXAMPLE
-    PS> Test-BizTalkHostInstance -Name 'Transmit Host'
-.EXAMPLE
-    PS> Test-BizTalkHostInstance -Name 'Transmit Host' -Server 'ComputerName'
-.NOTES
-    © 2015 be.stateless.
-#>
-function Test-BizTalkHostInstance
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]
-        $Name,
-
-        [string]
-        $Server = $Env:COMPUTERNAME
-    )
-    [bool] (Get-CimInstance -Namespace root/MicrosoftBizTalkServer -Class MSBTS_HostInstance -Filter "Name='Microsoft BizTalk Server $Name $Server'")
 }
 
 <#
@@ -637,11 +593,10 @@ function Test-BizTalkHostInstance
 .NOTES
     © 2015 be.stateless.
 #>
-function Remove-BizTalkHostInstance
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Remove-BizTalkHostInstance {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Name,
 
@@ -656,6 +611,7 @@ function Remove-BizTalkHostInstance
         Write-Host "`t '$Name' host instance on '$Server' server does not exists."
     }
 }
+
 <#
 .SYNOPSIS
     Restarts a running BizTalk Server host instance.
@@ -676,11 +632,10 @@ function Remove-BizTalkHostInstance
 .NOTES
     © 2015 be.stateless.
 #>
-function Restart-BizTalkHostInstance
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Restart-BizTalkHostInstance {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Name,
 
@@ -698,7 +653,8 @@ function Restart-BizTalkHostInstance
                 $hostInstance.Stop() | Out-Null
                 $hostInstance.Start() | Out-Null
                 Write-Verbose "`t '$Name' host instace on '$Server' server has been restarted."
-            } else {
+            }
+            else {
                 Write-Verbose "`t '$Name' host instace on '$Server' server does not need to be restarted as it is not started."
             }
         }
@@ -726,11 +682,10 @@ function Restart-BizTalkHostInstance
 .NOTES
     © 2015 be.stateless.
 #>
-function Start-BizTalkHostInstance
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Start-BizTalkHostInstance {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Name,
 
@@ -768,11 +723,10 @@ function Start-BizTalkHostInstance
 .NOTES
     © 2015 be.stateless.
 #>
-function Stop-BizTalkHostInstance
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Stop-BizTalkHostInstance {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Name,
 
@@ -787,49 +741,40 @@ function Stop-BizTalkHostInstance
     }
 }
 
-#endregion
-
-#region BizTalk Server Adapter Handler (New/Remove)
-
 <#
 .SYNOPSIS
-    Returns whether a Microsoft BizTalk Server adapter handler exists.
+    Returns whether a Microsoft BizTalk Server host instance exists.
 .DESCRIPTION
-    This command will return $true if the Microsoft BizTalk Server adapter handler exists.
-.PARAMETER Adapter
-    The name of the adapter whose existence is checked.
-.PARAMETER Host
-    The name of the host for which the existence of a handler is checked.
-.PARAMETER Direction
-    The direction of the adapter whose existence is checked.
+    This command will return $true if the Microsoft BizTalk Server host instance exists.
+.PARAMETER Name
+    The name of the BizTalk host.
+.PARAMETER Server
+    The server on which the host instance is tested for existence.
 .OUTPUTS
-    True if the BizTalk Server adapter handler exists; False otherwise.
+    True if the BizTalk Server host instance exists; False otherwise.
 .EXAMPLE
-    PS> Test-BizTalkAdapterHandler -Adapter FILE -Host BizTalkServerApplication -Direction Send
+    PS> Test-BizTalkHostInstance -Name 'Transmit Host'
+.EXAMPLE
+    PS> Test-BizTalkHostInstance -Name 'Transmit Host' -Server 'ComputerName'
 .NOTES
     © 2015 be.stateless.
 #>
-function Test-BizTalkAdapterHandler
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Test-BizTalkHostInstance {
+    [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
-        $Adapter,
+        $Name,
 
-        [Parameter(Mandatory=$true)]
         [string]
-        $Host,
-
-        [Parameter(Mandatory=$true)]
-        [ValidateSet('Receive','Send')]
-        [string]
-        $Direction
+        $Server = $Env:COMPUTERNAME
     )
-    # MSBTS_SendHandler2 is to be used since BTS 2006 onwards, http://blogdoc.biztalk247.com/article.aspx?page=bb8f4d72-f38d-4eac-87c0-407e9c58c50b
-    $className = (?: {$Direction -eq 'Receive'} {'MSBTS_ReceiveHandler'} {'MSBTS_SendHandler2'})
-    [bool] (Get-CimInstance -Namespace root/MicrosoftBizTalkServer -ClassName $className -Filter "AdapterName='$Adapter' and HostName='$Host'")
+    [bool] (Get-CimInstance -Namespace root/MicrosoftBizTalkServer -Class MSBTS_HostInstance -Filter "Name='Microsoft BizTalk Server $Name $Server'")
 }
+
+#endregion
+
+#region BizTalk Server Adapter Handler (New/Remove/Test)
 
 <#
 .SYNOPSIS
@@ -851,20 +796,19 @@ function Test-BizTalkAdapterHandler
 .NOTES
     © 2015 be.stateless.
 #>
-function New-BizTalkAdapterHandler
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function New-BizTalkAdapterHandler {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Adapter,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Host,
 
-        [Parameter(Mandatory=$true)]
-        [ValidateSet('Receive','Send')]
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Receive', 'Send')]
         [string]
         $Direction,
 
@@ -877,7 +821,7 @@ function New-BizTalkAdapterHandler
     elseif ($PsCmdlet.ShouldProcess("BizTalk Group", "Creating $Direction $Adapter handler for '$Host' host")) {
         Write-Verbose "`t Creating $Direction $Adapter handler for '$Host' host...";
         # MSBTS_SendHandler2 is to be used since BTS 2006 onwards, http://blogdoc.biztalk247.com/article.aspx?page=bb8f4d72-f38d-4eac-87c0-407e9c58c50b
-        $className = (?: {$Direction -eq 'Receive'} {'MSBTS_ReceiveHandler'} {'MSBTS_SendHandler2'})
+        $className = (?: { $Direction -eq 'Receive' } { 'MSBTS_ReceiveHandler' } { 'MSBTS_SendHandler2' })
         $properties = @{ AdapterName = $Adapter ; HostName = $Host }
         if ($Direction -eq 'Send' -and $Default.IsPresent) { $properties.IsDefault = [bool]$Default }
         New-CimInstance -Namespace root/MicrosoftBizTalkServer -ClassName $className -Property $properties | Out-Null
@@ -901,20 +845,19 @@ function New-BizTalkAdapterHandler
 .NOTES
     © 2015 be.stateless.
 #>
-function Remove-BizTalkAdapterHandler
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Remove-BizTalkAdapterHandler {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Adapter,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Host,
 
-        [Parameter(Mandatory=$true)]
-        [ValidateSet('Receive','Send')]
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Receive', 'Send')]
         [string]
         $Direction
     )
@@ -924,11 +867,50 @@ function Remove-BizTalkAdapterHandler
     elseif ($PsCmdlet.ShouldProcess("BizTalk Group", "Removing $Direction $Adapter handler for '$Host' host")) {
         Write-Verbose "`t Removing $Direction $Adapter handler for '$Host' host...";
         # MSBTS_SendHandler2 is to be used since BTS 2006 onwards, http://blogdoc.biztalk247.com/article.aspx?page=bb8f4d72-f38d-4eac-87c0-407e9c58c50b
-        $className = (?: {$Direction -eq 'Receive'} {'MSBTS_ReceiveHandler'} {'MSBTS_SendHandler2'})
+        $className = (?: { $Direction -eq 'Receive' } { 'MSBTS_ReceiveHandler' } { 'MSBTS_SendHandler2' })
         # TODO fail if try to remove default send handler
         Get-CimInstance -Namespace root/MicrosoftBizTalkServer -ClassName $className -Filter "AdapterName='$Adapter' and HostName='$Host'" | Remove-CimInstance
         Write-Host "`t $Direction $Adapter handler for '$Host' host has been removed."
     }
+}
+
+<#
+.SYNOPSIS
+    Returns whether a Microsoft BizTalk Server adapter handler exists.
+.DESCRIPTION
+    This command will return $true if the Microsoft BizTalk Server adapter handler exists.
+.PARAMETER Adapter
+    The name of the adapter whose existence is checked.
+.PARAMETER Host
+    The name of the host for which the existence of a handler is checked.
+.PARAMETER Direction
+    The direction of the adapter whose existence is checked.
+.OUTPUTS
+    True if the BizTalk Server adapter handler exists; False otherwise.
+.EXAMPLE
+    PS> Test-BizTalkAdapterHandler -Adapter FILE -Host BizTalkServerApplication -Direction Send
+.NOTES
+    © 2015 be.stateless.
+#>
+function Test-BizTalkAdapterHandler {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Adapter,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Host,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Receive', 'Send')]
+        [string]
+        $Direction
+    )
+    # MSBTS_SendHandler2 is to be used since BTS 2006 onwards, http://blogdoc.biztalk247.com/article.aspx?page=bb8f4d72-f38d-4eac-87c0-407e9c58c50b
+    $className = (?: { $Direction -eq 'Receive' } { 'MSBTS_ReceiveHandler' } { 'MSBTS_SendHandler2' })
+    [bool] (Get-CimInstance -Namespace root/MicrosoftBizTalkServer -ClassName $className -Filter "AdapterName='$Adapter' and HostName='$Host'")
 }
 
 #endregion
@@ -989,11 +971,10 @@ function Remove-BizTalkAdapterHandler
 
     © 2012 be.stateless.
 #>
-function Update-BizTalkApplicationHosts
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Update-BizTalkApplicationHosts {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Application,
 
@@ -1030,10 +1011,10 @@ function Update-BizTalkApplicationHosts
 
             # Updating orchestration hosts
             Write-Verbose "`t Analysing '$Application' application's hosts bound to Orchestrations..."
-            foreach($tuple in $OrchestrationHostUpdates) {
-                foreach($deprecatedHost in $tuple.DeprecatedHosts) {
+            foreach ($tuple in $OrchestrationHostUpdates) {
+                foreach ($deprecatedHost in $tuple.DeprecatedHosts) {
                     $nodes = $bindings.SelectNodes("//ModuleRef//Service/Host[@Name='$deprecatedHost']")
-                    foreach($node in $nodes) {
+                    foreach ($node in $nodes) {
                         $node.SetAttribute("Name", $tuple.Host)
                         $dirty = $true
                     }
@@ -1041,12 +1022,12 @@ function Update-BizTalkApplicationHosts
             }
             # Updating receive handlers
             Write-Verbose "`t Analysing '$Application' application's handlers bound to Receive Locations..."
-            foreach($tuple in $ReceiveHandlerUpdates) {
-                $adapterNames = ';' + (($tuple.Adapters | % { $_ }) -join ';') + ';'
-                foreach($deprecatedHost in $tuple.DeprecatedHosts) {
+            foreach ($tuple in $ReceiveHandlerUpdates) {
+                $adapterNames = ';' + (($tuple.Adapters | ForEach-Object { $_ }) -join ';') + ';'
+                foreach ($deprecatedHost in $tuple.DeprecatedHosts) {
                     $predicate = "@Name='$deprecatedHost' and contains('$adapterNames', concat(';', TransportType/@Name, ';'))"
                     $nodes = $bindings.SelectNodes("//ReceiveHandler[$predicate]")
-                    foreach($node in $nodes) {
+                    foreach ($node in $nodes) {
                         $node.SetAttribute("Name", $tuple.Host)
                         $dirty = $true
                     }
@@ -1054,26 +1035,26 @@ function Update-BizTalkApplicationHosts
             }
             # Updating send handlers
             Write-Verbose "`t Analysing '$Application' application's handlers bound to Send Ports..."
-            foreach($tuple in $SendHandlerUpdates) {
-                $adapterNames = ';' + (($tuple.Adapters | % { $_ }) -join ';') + ';'
-                foreach($deprecatedHost in $tuple.DeprecatedHosts) {
+            foreach ($tuple in $SendHandlerUpdates) {
+                $adapterNames = ';' + (($tuple.Adapters | ForEach-Object { $_ }) -join ';') + ';'
+                foreach ($deprecatedHost in $tuple.DeprecatedHosts) {
                     $predicate = "@Name='$deprecatedHost' and contains('$adapterNames', concat(';', TransportType/@Name, ';'))"
                     $nodes = $bindings.SelectNodes("//SendHandler[$predicate]")
-                    foreach($node in $nodes) {
+                    foreach ($node in $nodes) {
                         $node.SetAttribute("Name", $tuple.Host)
                         $dirty = $true
                     }
                 }
             }
 
-            if($dirty) {
+            if ($dirty) {
                 $updatedBindingsFile = $bindingsFile -f 'updated'
                 $bindings.Save($updatedBindingsFile)
                 if ($PsCmdlet.ShouldProcess("BizTalk Group", "Updating '$Application' application's hosts and handlers")) {
                     Write-Host "`t Updating '$Application' application's hosts and handlers..."
                     Write-Verbose "`t`t Importing updated bindings..."
 
-#TODO add a confirm switch (or may be already there thanks to SupportsShouldProcess=$true
+                    #TODO add a confirm switch (or may be already there thanks to SupportsShouldProcess=$true
 
                     # stop app so as to unenlist ports which must be done prior to import updated bindings
                     Stop-Application -Path $Application -StopOption StopAll | Out-Default
@@ -1087,14 +1068,15 @@ function Update-BizTalkApplicationHosts
             }
 
 
-#TODO keep application in the same state as before patching, that is keep it stopped if it were so, or restart only what was already started (orch, SP and RL)
+            #TODO keep application in the same state as before patching, that is keep it stopped if it were so, or restart only what was already started (orch, SP and RL)
 
 
             if ($started) {
                 Write-Verbose "`t`t Starting '$Application' application..."
                 Start-Application -Path $Application | Out-Default
                 Write-Verbose "`t`t '$Application' application has been started."
-            } else {
+            }
+            else {
                 Write-Verbose "`t`t Stopping '$Application' application..."
                 Stop-Application -Path $Application -StopOption StopAll | Out-Default
                 Write-Verbose "`t`t '$Application' application has been stopped."
@@ -1120,19 +1102,18 @@ function Update-BizTalkApplicationHosts
 .NOTES
     © 2012 be.stateless.
 #>
-function Resume-BizTalkReceiveLocations
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Resume-BizTalkReceiveLocations {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param()
 
-#TODO use workflow for these 2 commands and save snapshot of enabled RL in the workflow state
+    #TODO use workflow for these 2 commands and save snapshot of enabled RL in the workflow state
 
-    if(-not(Test-Path (Join-Path $Env:TEMP "EnabledReceiveLocations.xml"))) {
+    if (-not(Test-Path (Join-Path $Env:TEMP "EnabledReceiveLocations.xml"))) {
         throw 'The list of previously enabled receive locations was not found.'
     }
     Write-Host 'Re-enabling all receive locations.'
     $enabledReceiveLocations = Import-Clixml -Path (Join-Path $Env:TEMP "EnabledReceiveLocations.xml")
-    $enabledReceiveLocations | % { Enable-ReceiveLocation $_ }
+    $enabledReceiveLocations | ForEach-Object { Enable-ReceiveLocation $_ }
     Write-Host 'All receive locations have been re-enabled.'
 }
 
@@ -1146,18 +1127,17 @@ function Resume-BizTalkReceiveLocations
 .NOTES
     © 2012 be.stateless.
 #>
-function Suspend-BizTalkReceiveLocations
-{
-    [CmdletBinding(SupportsShouldProcess=$true)]
+function Suspend-BizTalkReceiveLocations {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param()
 
-#TODO use workflow for these 2 commands and save snapshot of enabled RL in the workflow state
+    #TODO use workflow for these 2 commands and save snapshot of enabled RL in the workflow state
 
     Write-Host 'Retrieving the currently enabled receive locations.'
-    $enabledReceiveLocations = Get-ChildItem 'BizTalk:\Applications\*\Receive Locations\*' -exclude 'BizTalk*' | ? { $_.Enable } | % { $_.PSPath }
+    $enabledReceiveLocations = Get-ChildItem 'BizTalk:\Applications\*\Receive Locations\*' -exclude 'BizTalk*' | Where-Object { $_.Enable } | ForEach-Object { $_.PSPath }
     Export-Clixml -Path (Join-Path $Env:TEMP "EnabledReceiveLocations.xml") -InputObject $enabledReceiveLocations
     Write-Host 'Disabling all receive locations.'
-    $enabledReceiveLocations | % { Disable-ReceiveLocation $_ }
+    $enabledReceiveLocations | ForEach-Object { Disable-ReceiveLocation $_ }
     Write-Host 'All receive locations have been disabled.'
 }
 
@@ -1222,12 +1202,11 @@ function Suspend-BizTalkReceiveLocations
 # Add-BizTalkProvider
 
 # Have BizTalk Tracking tools available on path, noticeably bm.exe
-$p = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\BizTalk Server\3.0\' -ErrorAction SilentlyContinue `
-    | Select-Object -ExpandProperty InstallPath
-if ($p -ne $null) {
+$p = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\BizTalk Server\3.0\' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty InstallPath
+if ($null -ne $p) {
     $env:Path += ";$($p)Tracking"
 }
 
 Export-ModuleMember `
-    -Function Add-*, Assert-*, Disable-*, Enable-*, New-*, Remove-*, Restart-*, Start-*, Stop-*, Test-*, Update-* `
-    -Cmdlet @(Get-Command -Type CmdLet | ? { $_.PSSnapin -match '^BizTalkFactory.PowerShell' } | % { $_.Name })
+    -Function Add-*, Assert-*, Disable-*, Enable-*, New-*, Remove-*, Restart-*, Resume-*, Start-*, Stop-*, Test-*, Update-* `
+    -Cmdlet @(Get-Command -Type CmdLet | Where-Object { $_.PSSnapin -match '^BizTalkFactory.PowerShell' } | ForEach-Object { $_.Name })

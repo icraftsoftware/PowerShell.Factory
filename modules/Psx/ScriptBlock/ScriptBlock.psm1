@@ -31,28 +31,28 @@ function Convert-ScriptBlockParametersToDynamicParameters {
         # https://stackoverflow.com/questions/26910789/is-it-possible-to-reuse-a-param-block-across-multiple-functions
         $commonParameterNames = [FormatterServices]::GetUninitializedObject([CommonParameters]) |
             Get-Member -MemberType Properties |
-                Select-Object -ExpandProperty Name
+            Select-Object -ExpandProperty Name
         $dynamicParameters = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
     }
     process {
         $ScriptBlock.Ast.ParamBlock | Select-Object -ExpandProperty Parameters |
-            Where-Object -FilterScript { $commonParameterNames -notcontains $_.Name.VariablePath.UserPath } |
-                ForEach-Object -Process {
-                    $paramName = $_.Name.VariablePath.UserPath
-                    $paramAttributes = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-                    $_.Attributes | ForEach-Object -Process {
-                        $attributeType = Invoke-Expression -Command "[$($_.TypeName.FullName)]"
-                        if ([System.Management.Automation.Internal.CmdletMetadataAttribute].IsAssignableFrom($attributeType)) {
-                            $attribute = New-Object -TypeName $attributeType.FullName -ArgumentList @($_.PositionalArguments | ForEach-Object Value)
-                            $_.NamedArguments | ForEach-Object -Process {
-                                $attribute.($_.ArgumentName) = Invoke-Expression -Command ($_.Argument.Extent.Text)
-                            }
-                            $paramAttributes.Add($attribute)
-                        }
+        Where-Object -FilterScript { $commonParameterNames -notcontains $_.Name.VariablePath.UserPath } |
+        ForEach-Object -Process {
+            $paramName = $_.Name.VariablePath.UserPath
+            $paramAttributes = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+            $_.Attributes | ForEach-Object -Process {
+                $attributeType = Invoke-Expression -Command "[$($_.TypeName.FullName)]"
+                if ([System.Management.Automation.Internal.CmdletMetadataAttribute].IsAssignableFrom($attributeType)) {
+                    $attribute = New-Object -TypeName $attributeType.FullName -ArgumentList @($_.PositionalArguments | ForEach-Object Value)
+                    $_.NamedArguments | ForEach-Object -Process {
+                        $attribute.($_.ArgumentName) = Invoke-Expression -Command ($_.Argument.Extent.Text)
                     }
-                    $param = New-Object System.Management.Automation.RuntimeDefinedParameter $paramName, $_.StaticType, $paramAttributes
-                    $dynamicParameters.Add($paramName, $param)
+                    $paramAttributes.Add($attribute)
                 }
+            }
+            $param = New-Object System.Management.Automation.RuntimeDefinedParameter $paramName, $_.StaticType, $paramAttributes
+            $dynamicParameters.Add($paramName, $param)
+        }
 }
 end {
     $dynamicParameters

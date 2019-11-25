@@ -85,30 +85,30 @@ function New-Workspace {
             [object[]]
             $Folders
         )
-    
+
         @(
             $Folders |
                 Where-Object { $null -ne $_.LocalItem } |
-                    ForEach-Object {
-                        New-Object `
-                            -TypeName Microsoft.TeamFoundation.VersionControl.Client.WorkingFolder `
-                            -ArgumentList @(
-                            $_.ServerItem,
-                            $_.LocalItem,
-                            [Microsoft.TeamFoundation.VersionControl.Client.WorkingFolderType]::Map
-                        )
-                    }
+                ForEach-Object {
+                    New-Object `
+                        -TypeName Microsoft.TeamFoundation.VersionControl.Client.WorkingFolder `
+                        -ArgumentList @(
+                        $_.ServerItem,
+                        $_.LocalItem,
+                        [Microsoft.TeamFoundation.VersionControl.Client.WorkingFolderType]::Map
+                    )
+                }
             $Folders |
                 Where-Object { $null -eq $_.LocalItem } |
-                    ForEach-Object {
-                        New-Object `
-                            -TypeName Microsoft.TeamFoundation.VersionControl.Client.WorkingFolder `
-                            -ArgumentList @(
-                            $_.ServerItem,
-                            $null,
-                            [Microsoft.TeamFoundation.VersionControl.Client.WorkingFolderType]::Cloak
-                        )
-                    }
+                ForEach-Object {
+                    New-Object `
+                        -TypeName Microsoft.TeamFoundation.VersionControl.Client.WorkingFolder `
+                        -ArgumentList @(
+                        $_.ServerItem,
+                        $null,
+                        [Microsoft.TeamFoundation.VersionControl.Client.WorkingFolderType]::Cloak
+                    )
+                }
         )
     }
 
@@ -176,12 +176,12 @@ function New-WorkspaceShortcut {
             # look for the first folder for which LocalItem\src exists on disk
             $folder = $Workspace.Folders |
                 Where-Object { Test-Path -Path "$($_.LocalItem)\src" } |
-                    Select-Object -First 1 -ExpandProperty LocalItem
+                Select-Object -First 1 -ExpandProperty LocalItem
 
             # create a shortcut function and report its creation
             New-Item -Name "global:$($name):" -Path function: -Value "Set-Location '$folder\src'" -Force |
                 ForEach-Object { 'Created Workspace Shortcut {0}' -f $_.Name } |
-                    Out-Default
+                Out-Default
         }
     }
 }
