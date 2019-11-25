@@ -22,7 +22,7 @@ Describe 'Test-ItemGroup' {
    InModuleScope Group {
 
       Context 'When ItemGroups are given by arguments' {
-         Mock -Command Write-Warning -ModuleName Item # avoid cluttering output
+         Mock -Command Write-Warning -ModuleName Item # avoid cluttering Pester output
          It 'Has no duplicate.' {
             Mock -Command Write-Warning
 
@@ -56,7 +56,7 @@ Describe 'Test-ItemGroup' {
       }
 
       Context 'When ItemGroups are given by pipeline' {
-         Mock -Command Write-Warning -ModuleName Item # avoid cluttering output
+         Mock -Command Write-Warning -ModuleName Item # avoid cluttering Pester output
          It 'Has no duplicate.' {
             Mock -Command Write-Warning
 

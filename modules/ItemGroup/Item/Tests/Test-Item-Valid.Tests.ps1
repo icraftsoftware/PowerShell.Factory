@@ -34,7 +34,7 @@ Describe 'Test-Item-Valid' {
             Test-Item -Item $item -WellFormed | Should -Be $false
 
             # and property membership will not be satisfied anymore
-            Mock -CommandName Write-Warning # avoid cluttering output
+            Mock -CommandName Write-Warning # avoid cluttering Pester output
             Test-Item -Item $item -Valid | Should -Be $false
 
             Assert-VerifiableMock
@@ -42,7 +42,7 @@ Describe 'Test-Item-Valid' {
       }
 
       Context 'Validity check when Items are given by argument.' {
-         Mock -CommandName Write-Warning # avoid cluttering output
+         Mock -CommandName Write-Warning # avoid cluttering Pester output
          It 'Is false when Item does not have a Name nor a Path property.' {
             Test-Item -Item @(@{ Condition = $true }, [PSCustomObject]@{ Condition = $true }) -Valid | Should -Be ($false, $false)
          }
@@ -74,7 +74,7 @@ Describe 'Test-Item-Valid' {
       }
 
       Context 'Validity check when Items are given by pipeline.' {
-         Mock -CommandName Write-Warning # avoid cluttering output
+         Mock -CommandName Write-Warning # avoid cluttering Pester output
          It 'Is false when Item does not have a Name nor a Path property.' {
             @{ Condition = $true }, [PSCustomObject]@{ Condition = $true } | Test-Item -Valid | Should -Be ($false, $false)
          }

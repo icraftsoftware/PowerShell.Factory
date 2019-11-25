@@ -23,7 +23,7 @@ Describe 'Test-Item-Unique' {
 
       Context 'Unicity check is conditionned by the Validity check.' {
          It 'ignores invalid Items during Unicity check.' {
-            Mock -CommandName Write-Warning # avoid cluttering output
+            Mock -CommandName Write-Warning # avoid cluttering Pester output
 
             $items = @( @{ Name = 'one' }, @{ Name = 'two' }, @{ Path = $null; Name = 'same' }, @{Path = $null; Name = 'same' } )
             # even though last two items have the same Name they are invalid
@@ -43,7 +43,7 @@ Describe 'Test-Item-Unique' {
       }
 
       Context 'Unicity check when Items are given by argument.' {
-         Mock -CommandName Write-Warning # avoid cluttering output
+         Mock -CommandName Write-Warning # avoid cluttering Pester output
          It 'Is true when Items have different Names.' {
             Test-Item -Item @( @{ Name = 'one' }, [PSCustomObject]@{ Name = 'two' } ) -Unique | Should -Be $true
          }
@@ -80,7 +80,7 @@ Describe 'Test-Item-Unique' {
       }
 
       Context 'Unicity check when Items are given by pipeline.' {
-         Mock -CommandName Write-Warning # avoid cluttering output
+         Mock -CommandName Write-Warning # avoid cluttering Pester output
          It 'Is true when Items have different Names.' {
             @{ Name = 'one' }, [PSCustomObject]@{ Name = 'two' } | Test-Item -Unique | Should -Be $true
          }
