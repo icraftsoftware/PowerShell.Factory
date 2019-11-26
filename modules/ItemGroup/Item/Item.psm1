@@ -189,7 +189,7 @@ function Test-Item {
             'unicity' {
                 $allValidItems += @(
                     $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | Where-Object -FilterScript {
-                        Test-Item -Item $currentItem -Valid
+                        Test-Item -Item $currentItem -Valid -WarningAction:(Resolve-WarningAction $PSBoundParameters)
                     }
                 )
             }
@@ -197,7 +197,7 @@ function Test-Item {
                 $Item | ForEach-Object -Process { $_ } -PipelineVariable currentItem | ForEach-Object -Process {
                     $isValid = $false
                     if (Test-Item -Item $currentItem -WellFormed) {
-                        # Path property has the precedence over the Name property
+                        # Path property has the precedence over the Name property, but either one is required
                         if (Test-Item -Item $currentItem -Property Path) {
                             $isValid = $null -ne $currentItem.Path -and (Test-Path $currentItem.Path)
                         }
@@ -206,7 +206,7 @@ function Test-Item {
                         }
                     }
                     if (-not $isValid) {
-                        private:Trace-InvalidItem -Item $currentItem
+                        private:Trace-InvalidItem -Item $currentItem -WarningAction:(Resolve-WarningAction $PSBoundParameters)
                     }
                     $isValid
                 }
@@ -246,9 +246,11 @@ function Test-Item {
                 $allValidItems |
                     Group-Object -Property { if (Test-Item -Item $_ -Property Path) { $_.Path } else { $_.Name } } |
                     Where-Object -FilterScript { $_.Count -gt 1 } |
-                    private:Trace-DuplicateItem |
+                    private:Trace-DuplicateItem -WarningAction:(Resolve-WarningAction $PSBoundParameters) |
                     Test-None
             }
         }
     }
 }
+
+Import-Module ItemGroup\Utils

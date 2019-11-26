@@ -17,6 +17,7 @@
 #endregion
 
 Import-Module ItemGroup\Item -Force
+Import-Module ItemGroup\Utils -Force
 
 Describe 'Test-Item-Valid' {
    InModuleScope Item {
@@ -30,13 +31,12 @@ Describe 'Test-Item-Valid' {
             Test-Item -Item $item -Valid | Should -Be $true
 
             # it will be assumed not to be well formed
-            Mock -CommandName Test-Item -ParameterFilter { $WellFormed.IsPresent } -MockWith { $false <# assumes Item is not wellformed #> } -Verifiable
+            Mock -CommandName Test-Item -ParameterFilter { $WellFormed.IsPresent } -MockWith { $false <# assumes Item is not wellformed #> }
             Test-Item -Item $item -WellFormed | Should -Be $false
 
-            # and property membership will not be satisfied anymore
             Test-Item -Item $item -Valid -WarningAction SilentlyContinue | Should -Be $false
 
-            Assert-VerifiableMock
+            Assert-MockCalled -CommandName Test-Item -ParameterFilter { $WellFormed.IsPresent } -Times 2
          }
       }
 
