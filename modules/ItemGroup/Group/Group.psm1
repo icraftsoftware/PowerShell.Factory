@@ -76,30 +76,32 @@ function Expand-ItemGroup {
             Write-Information -MessageData "Expanding ItemGroup '$itemGroupName'." -InformationAction Continue
             if ($currentItemGroup.$itemGroupName -isnot [array]) { throw "ItemGroup '$itemGroupName' must be an array of Items." }
             if ($expandedItemGroup.ContainsKey($itemGroupName)) { Write-Warning -Message "ItemGroup '$itemGroupName' is being redefined." }
-            # compute ItemGroup's default item to be merged into every other item
+            # compute ItemGroup's default Item to be merged into every other Item
             $defaultItem = Resolve-DefaultItem -ItemGroup $currentItemGroup.$itemGroupName
-            $items = @(
+            $expandedItemGroup.$itemGroupName = @(
                 $currentItemGroup.$itemGroupName |
-                    Where-Object -FilterScript {
-                        # select valid and non-default items
+                    Where-Object -PipelineVariable validItem -FilterScript {
+                        # select valid and non-default Items
                         (Test-Item -Item $_ -Valid) -and ((Test-Item -Item $_ -Property Name -Mode None) -or $_.Name -ne '*')
-                    } -PipelineVariable item |
-                    ForEach-Object -PipelineVariable path -Process {
-                        # flatten items whose item.Path is a list of paths
-                        # if ((Test-Item -Item $item -Property Name -Mode None) -and (Test-Item -Item $item -Property Path)) {
-                        if (Test-Item -Item $item -Property Path) {
-                            $item.Path | Resolve-Path -ErrorAction Stop <# will throw if Path is not found #> | ForEach-Object -Process {
-                                @{ Name = Split-Path -Path $_.ProviderPath -Leaf ; Path = $_.ProviderPath }
-                            }
+                    } |
+                    ForEach-Object -PipelineVariable flattenedItem -Process {
+                        if (Test-Item -Item $validItem -Property Path) {
+                            # flatten Items whose Path is a list of paths
+                            $validItem.Path |
+                                Resolve-Path -ErrorAction Stop <# throw if Path cannot be resolved #> |
+                                ForEach-Object -Process {
+                                    # rewrite Name after Path and merges validItem's other properties back into the flattened Item
+                                    Merge-HashTable -HashTable (
+                                        @{ Name = Split-Path -Path $_.ProviderPath -Leaf ; Path = $_.ProviderPath },
+                                        $validItem
+                                    )
+                                }
                         }
                         else {
-                            @{ }
+                            $validItem
                         }
                     } |
-                    ForEach-Object -Process { Merge-HashTable -HashTable $path, $item, $defaultItem }
-            )
-            $expandedItemGroup.$itemGroupName = @(
-                $items |
+                    ForEach-Object -Process { Merge-HashTable -HashTable $flattenedItem, $defaultItem } |
                     Where-Object -FilterScript { (Test-Item -Item $_ -Property Condition -Mode None) -or $_.Condition } |
                     ConvertTo-Item
             )
@@ -202,10 +204,17 @@ function Test-ItemGroup {
     }
     end {
         if ($Unique) {
-            $duplicates = @( $allItemGroups | Select-Object -ExpandProperty Keys | Group-Object | Where-Object -FilterScript { $_.Count -gt 1 } )
+            $duplicates = @(
+                $allItemGroups |
+                    Select-Object -ExpandProperty Keys |
+                    Group-Object |
+                    Where-Object -FilterScript { $_.Count -gt 1 }
+            )
             $duplicates | ForEach-Object -Process { Write-Warning -Message "ItemGroup '$($_.Name)' has been defined multiple times." }
             $itemGroupsAreUnique = $duplicates.Length -eq 0
-            $itemsAreUnique = $allItemGroups | ForEach-Object -Process { $_.Values } | Test-Item -Unique
+            $itemsAreUnique = $allItemGroups |
+                ForEach-Object -Process { $_.Values } |
+                Test-Item -Unique -WarningAction:(Resolve-WarningAction $PSBoundParameters)
             $itemGroupsAreUnique -and $itemsAreUnique
         }
     }
@@ -222,8 +231,9 @@ function Resolve-DefaultItem {
     # compute default Item, which defines inheritable default properties, from all Items whose Name = '*'
     $ItemGroup |
         ForEach-Object -Process { $_ } |
-        Where-Object -FilterScript { (Test-Item -Item $_ -Valid) -and (Test-Item -Item $_ -Property Name) -and $_.Name -eq '*' } |
+        Where-Object -FilterScript { (Test-Item -Item $_ -Valid -WarningAction SilentlyContinue) -and (Test-Item -Item $_ -Property Name) -and $_.Name -eq '*' } |
         Merge-HashTable -Exclude 'Name' -Force
 }
 
 Import-Module ItemGroup\Item
+Import-Module ItemGroup\Utils

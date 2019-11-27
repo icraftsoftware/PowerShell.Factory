@@ -21,33 +21,107 @@ Import-Module ItemGroup\Group -Force
 Describe 'Test-ItemGroup' {
    InModuleScope Group {
 
-      Context 'When ItemGroups are given by arguments' {
-         Mock -Command Write-Warning -ModuleName Item # avoid cluttering Pester output
-         It 'Has no duplicate.' {
-            Mock -Command Write-Warning
-
-            $itemGroup = @( @{One = @( @{ } ) }, @{Two = @( @{ } ) } )
+      Context 'Unicity check when ItemGroups are given by arguments' {
+         It 'is true when there is no duplicate ItemGroup.' {
+            $itemGroup = @(
+               @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'two' } ) }
+            )
             Test-ItemGroup -ItemGroup $itemGroup -Unique | Should -Be $true
-
-            Assert-MockCalled -CommandName Write-Warning -Times 0
          }
-         It 'Warns about each duplicate ItemGroup.' {
-            Mock -Command Write-Warning
+         It 'is false when there is no duplicate ItemGroup but duplicate Items.' {
+            $itemGroup = @(
+               @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'one' } ) }
+            )
+            Test-ItemGroup -ItemGroup $itemGroup -Unique -WarningAction SilentlyContinue | Should -Be $false
+         }
+         It 'is true when there is no duplicate ItemGroup across input arrays.' {
+            $itemGroup = @(
+               @( @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'two' } ) } )
+               @( @{ Six = @( @{ Name = 'six' } ) }, @{ Ten = @( @{ Name = 'ten' } ) } )
+            )
+            Test-ItemGroup -ItemGroup $itemGroup -Unique | Should -Be $true
+         }
+         It 'is false when there is no duplicate ItemGroup across input arrays but duplicate Items.' {
+            $itemGroup = @(
+               @( @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'two' } ) } )
+               @( @{ Six = @( @{ Name = 'one' } ) }, @{ Ten = @( @{ Name = 'two' } ) } )
+            )
+            Test-ItemGroup -ItemGroup $itemGroup -Unique -WarningAction SilentlyContinue | Should -Be $false
+         }
+         It 'is false when there is one duplicate ItemGroup.' {
+            $itemGroup = @(
+               @{ One = @( @{ Name = 'one' } ) }, @{ One = @( @{ Name = 'one' } ) }
+            )
+            Test-ItemGroup -ItemGroup $itemGroup -Unique -WarningAction SilentlyContinue | Should -Be $false
+         }
+         It 'is false when there is one duplicate ItemGroup across input arrays.' {
+            $itemGroup = @(
+               @( @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'two' } ) } )
+               @( @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'two' } ) } )
+            )
+            Test-ItemGroup -ItemGroup $itemGroup -Unique -WarningAction SilentlyContinue | Should -Be $false
+         }
+      }
 
-            $itemGroup = @( @{One = @( @{ } ) }, @{One = @( @{ } ) } )
+      Context 'Unicity check when ItemGroups are given by pipeline' {
+         It 'is true when there is no duplicate ItemGroup.' {
+            $itemGroup = @(
+               @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'two' } ) }
+            )
+            $itemGroup | Test-ItemGroup -Unique | Should -Be $true
+         }
+         It 'is false when there is no duplicate ItemGroup but duplicate Items.' {
+            $itemGroup = @(
+               @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'one' } ) }
+            )
+            $itemGroup | Test-ItemGroup -Unique -WarningAction SilentlyContinue | Should -Be $false
+         }
+         It 'is true when there is no duplicate ItemGroup across input arrays.' {
+            $itemGroup = @(
+               @( @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'two' } ) } )
+               @( @{ Six = @( @{ Name = 'six' } ) }, @{ Ten = @( @{ Name = 'ten' } ) } )
+            )
+            $itemGroup | Test-ItemGroup -Unique | Should -Be $true
+         }
+         It 'is false when there is no duplicate ItemGroup across input arrays but duplicate Items.' {
+            $itemGroup = @(
+               @( @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'two' } ) } )
+               @( @{ Six = @( @{ Name = 'one' } ) }, @{ Ten = @( @{ Name = 'two' } ) } )
+            )
+            $itemGroup | Test-ItemGroup -Unique -WarningAction SilentlyContinue | Should -Be $false
+         }
+         It 'is false when there is one duplicate ItemGroup.' {
+            $itemGroup = @(
+               @{ One = @( @{ Name = 'one' } ) }, @{ One = @( @{ Name = 'one' } ) }
+            )
+            $itemGroup | Test-ItemGroup -Unique -WarningAction SilentlyContinue | Should -Be $false
+         }
+         It 'is false when there is one duplicate ItemGroup across input arrays.' {
+            $itemGroup = @(
+               @( @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'two' } ) } )
+               @( @{ One = @( @{ Name = 'one' } ) }, @{ Two = @( @{ Name = 'two' } ) } )
+            )
+            $itemGroup | Test-ItemGroup -Unique -WarningAction SilentlyContinue | Should -Be $false
+         }
+      }
+
+      Context 'Warns about each duplicate ItemGroup' {
+         Mock -Command Write-Warning
+         It 'warns about each duplicate ItemGroup.' {
+            $itemGroup = @(
+               @{ One = @( @{ Name = 'one' } ) }, @{ One = @( @{ Name = 'two' } ) }
+            )
             Test-ItemGroup -ItemGroup $itemGroup -Unique | Should -Be $false
 
             Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
             Assert-MockCalled -CommandName Write-Warning -Times 1
          }
-         It 'Warns about each duplicate ItemGroup across arrays.' {
-            Mock -Command Write-Warning
-
-            $itemGroups = @(
-               @( @{One = @( @{ } ) }, @{Two = @( @{ } ) } )
-               @( @{One = @( @{ } ) }, @{Two = @( @{ } ) } )
+         It 'warns about each duplicate ItemGroup across arrays.' {
+            $itemGroup = @(
+               @( @{ One = @( @{ Name = 'abc' } ) }, @{ Two = @( @{ Name = 'def' } ) } )
+               @( @{ One = @( @{ Name = 'cba' } ) }, @{ Two = @( @{ Name = 'fed' } ) } )
             )
-            Test-ItemGroup -ItemGroup $itemGroups -Unique | Should -Be $false
+            Test-ItemGroup -ItemGroup $itemGroup -Unique | Should -Be $false
 
             Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
             Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''Two'' has been defined multiple times.' } -Times 1
@@ -55,64 +129,32 @@ Describe 'Test-ItemGroup' {
          }
       }
 
-      Context 'When ItemGroups are given by pipeline' {
-         Mock -Command Write-Warning -ModuleName Item # avoid cluttering Pester output
-         It 'Has no duplicate.' {
-            Mock -Command Write-Warning
-
-            $itemGroup = @( @{One = @( @{ } ) }, @{Two = @( @{ } ) } )
-            $itemGroup | Test-ItemGroup -Unique | Should -Be $true
-
-            Assert-MockCalled -CommandName Write-Warning -Times 0
-         }
-         It 'Warns about each duplicate ItemGroup.' {
-            Mock -Command Write-Warning
-
-            $itemGroup = @( @{One = @( @{ } ) }, @{One = @( @{ } ) } )
-            $itemGroup | Test-ItemGroup -Unique | Should -Be $false
-
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
-            Assert-MockCalled -CommandName Write-Warning -Times 1
-         }
-         It 'Warns about each duplicate ItemGroup across arrays.' {
-            Mock -Command Write-Warning
-
-            $itemGroups = @(
-               @( @{One = @( @{ } ) }, @{Two = @( @{ } ) } )
-               @( @{One = @( @{ } ) }, @{Two = @( @{ } ) } )
+      Context 'Warns about each duplicate Item' {
+         Mock -Command Write-Warning -ModuleName Item
+         It 'warns about each duplicate Item.' {
+            $itemGroup = @(
+               @{ One = @( @{ Name = 'one' } ) }
+               @{ Two = @( @{ Name = 'one' }, @{ Name = 'two' } ) }
             )
-            $itemGroups | Test-ItemGroup -Unique | Should -Be $false
-
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''Two'' has been defined multiple times.' } -Times 1
-            Assert-MockCalled -CommandName Write-Warning -Times 2
-         }
-      }
-
-      Context "When duplicate ItemGroups have duplicate Items" {
-         It 'Warns about each duplicate Item.' {
-            Mock -Command Write-Warning -ModuleName Item
-
-            $itemGroup = @( @{One = @( @{ Name = 'one' } ) }, @{Two = @( @{ Name = 'one' }, @{ Name = 'two' } ) } )
             $itemGroup | Test-ItemGroup -Unique | Should -Be $false
 
             Assert-MockCalled -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item ''one'' has been defined multiple times:' } -Times 2
             Assert-MockCalled -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'Name\s+:\s+one' } -Times 2
             Assert-MockCalled -CommandName Write-Warning -ModuleName Item -Times 4
          }
-         It 'Warns about each duplicate ItemGroup across arrays.' {
-            Mock -Command Write-Warning -ModuleName Item
-            Mock -Command Write-Warning
-
-            $itemGroups = @(
-               @( @{One = @( @{ Name = 'one' } ) }, @{Two = @( @{ Name = 'one' }, @{ Name = 'two' } ) } )
-               @( @{One = @( @{ Name = 'one' } ) }, @{Two = @( @{ Name = 'one' }, @{ Name = 'two' } ) } )
+         It 'Warns about each duplicate Item across arrays.' {
+            $itemGroup = @(
+               @(
+                  @{One = @( @{ Name = 'one' } ) }
+                  @{Two = @( @{ Name = 'one' }, @{ Name = 'two' } ) }
+               )
+               @(
+                  @{Six = @( @{ Name = 'one' } ) }
+                  @{Ten = @( @{ Name = 'one' }, @{ Name = 'two' } ) }
+               )
             )
-            $itemGroups | Test-ItemGroup -Unique | Should -Be $false
+            $itemGroup | Test-ItemGroup -Unique | Should -Be $false
 
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''Two'' has been defined multiple times.' } -Times 1
-            Assert-MockCalled -CommandName Write-Warning -Times 2
             Assert-MockCalled -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item ''one'' has been defined multiple times:' } -Times 4
             Assert-MockCalled -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'Name\s+:\s+one' } -Times 4
             Assert-MockCalled -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item ''two'' has been defined multiple times:' } -Times 2
