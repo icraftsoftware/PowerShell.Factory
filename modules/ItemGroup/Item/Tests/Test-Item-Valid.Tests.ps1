@@ -37,7 +37,7 @@ Describe 'Test-Item-Valid' {
             # and Validity check will not be satisfied anymore
             Test-Item -Item $item -Valid -WarningAction SilentlyContinue | Should -Be $false
 
-            Assert-MockCalled -CommandName Test-Item -ParameterFilter { $WellFormed.IsPresent } -Times 2
+            Assert-MockCalled -CommandName Test-Item -ParameterFilter { $WellFormed.IsPresent } -Exactly 2
          }
       }
 
@@ -104,25 +104,25 @@ Describe 'Test-Item-Valid' {
       }
 
       Context 'Validity check warns about any invalid Item.' {
-         Mock -CommandName Write-Warning
          Mock -CommandName Test-Path -MockWith { $false <# assumes every path is invalid #> }
+         Mock -CommandName Write-Warning
          It 'Warns about every property, whether null or invalid, for every invalid Item.' {
             @(@{ Path = 'a:\folder\file.txt' ; Name = $null ; Condition = $null }, [PSCustomObject]@{ Path = 'a:\folder\file.txt' ; Name = $null ; Condition = $null }) | Test-Item -Valid | Should -Be ($false, $false)
 
-            Assert-MockCalled -CommandName Write-Warning -Scope It -ParameterFilter { $Message -eq 'The following Item is invalid because it is either ill-formed or misses either a valid Path or Name property:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Scope It -ParameterFilter { $Message -match 'Path\s+:\s+a:\\folder\\file\.txt' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Scope It -ParameterFilter { $Message -match 'Name\s+:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Scope It -ParameterFilter { $Message -match 'Condition\s+:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Times 8
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item is invalid because it is either ill-formed or misses either a valid Path or Name property:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Path\s+:\s+a:\\folder\\file\.txt' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Condition\s+:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -Exactly 8
          }
          It 'Warns about every property for every invalid Item.' {
             @(@{ Path = 'a:\folder\file.txt' ; Name = 'Stark' ; Condition = $false }, [PSCustomObject]@{ Path = 'a:\folder\file.txt' ; Name = 'Stark' ; Condition = $false }) | Test-Item -Valid | Should -Be ($false, $false)
 
-            Assert-MockCalled -CommandName Write-Warning -Scope It -ParameterFilter { $Message -eq 'The following Item is invalid because it is either ill-formed or misses either a valid Path or Name property:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Scope It -ParameterFilter { $Message -match 'Path\s+:\s+a:\\folder\\file\.txt' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Scope It -ParameterFilter { $Message -match 'Name\s+:\s+Stark' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Scope It -ParameterFilter { $Message -match 'Condition\s+:\s+False' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Times 8
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item is invalid because it is either ill-formed or misses either a valid Path or Name property:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Path\s+:\s+a:\\folder\\file\.txt' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+Stark' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Condition\s+:\s+False' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -Exactly 8
          }
       }
 

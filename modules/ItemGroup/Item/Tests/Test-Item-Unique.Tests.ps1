@@ -117,29 +117,29 @@ Describe 'Test-Item-Unique' {
          It 'Warns about every property for every duplicate Item.' {
             @{ Name = 'One' ; City = 'City' }, @{ Name = 'Two' ; City = 'City' }, @{ Name = 'One' ; City = 'City' } | Test-Item -Unique | Should -Be $false
 
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''One'' has been defined multiple times:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -match 'City\s+:\s+City' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+One' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Times 6
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''One'' has been defined multiple times:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'City\s+:\s+City' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+One' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -Exactly 6
          }
          It 'Warns about each duplicate Item given by the pipeline.' {
             @{ Name = 'One' }, @{ Name = 'Two' }, @{ Name = 'One' }, @{ Name = 'Two' }, @{ Name = 'Three' } | Test-Item -Unique | Should -Be $false
 
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''One'' has been defined multiple times:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+One' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''Two'' has been defined multiple times:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+Two' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Times 8
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''One'' has been defined multiple times:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+One' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''Two'' has been defined multiple times:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+Two' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -Exactly 8
          }
          It 'Warns about each duplicate Item in an array given by argument.' {
             $item = @( @{Name = 'One' }, @{Name = 'Two' }, @{Name = 'One' }, @{Name = 'Two' }, @{Name = 'Three' } )
             Test-Item -Item $item -Unique | Should -Be $false
 
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''One'' has been defined multiple times:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+One' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''Two'' has been defined multiple times:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+Two' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Times 8
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''One'' has been defined multiple times:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+One' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''Two'' has been defined multiple times:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+Two' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -Exactly 8
          }
          It 'Warns about each duplicate Item across arrays given by argument.' {
             $items = @(
@@ -148,11 +148,11 @@ Describe 'Test-Item-Unique' {
             )
             Test-Item -Item $items -Unique | Should -Be $false
 
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''One'' has been defined multiple times:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+One' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''Two'' has been defined multiple times:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+Two' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -Times 8
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''One'' has been defined multiple times:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+One' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'The following Item ''Two'' has been defined multiple times:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -match 'Name\s+:\s+Two' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -Exactly 8
          }
       }
 

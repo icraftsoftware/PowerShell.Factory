@@ -113,8 +113,8 @@ Describe 'Test-ItemGroup' {
             )
             Test-ItemGroup -ItemGroup $itemGroup -Unique | Should -Be $false
 
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
-            Assert-MockCalled -CommandName Write-Warning -Times 1
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Exactly 1
+            Assert-MockCalled -Scope It -CommandName Write-Warning -Exactly 1
          }
          It 'warns about each duplicate ItemGroup across arrays.' {
             $itemGroup = @(
@@ -123,9 +123,9 @@ Describe 'Test-ItemGroup' {
             )
             Test-ItemGroup -ItemGroup $itemGroup -Unique | Should -Be $false
 
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Times 1
-            Assert-MockCalled -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''Two'' has been defined multiple times.' } -Times 1
-            Assert-MockCalled -CommandName Write-Warning -Times 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''One'' has been defined multiple times.' } -Exactly 1
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''Two'' has been defined multiple times.' } -Exactly 1
+            Assert-MockCalled -Scope It -CommandName Write-Warning -Exactly 2
          }
       }
 
@@ -138,9 +138,9 @@ Describe 'Test-ItemGroup' {
             )
             $itemGroup | Test-ItemGroup -Unique | Should -Be $false
 
-            Assert-MockCalled -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item ''one'' has been defined multiple times:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'Name\s+:\s+one' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ModuleName Item -Times 4
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item ''one'' has been defined multiple times:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'Name\s+:\s+one' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -Exactly 4
          }
          It 'Warns about each duplicate Item across arrays.' {
             $itemGroup = @(
@@ -155,11 +155,11 @@ Describe 'Test-ItemGroup' {
             )
             $itemGroup | Test-ItemGroup -Unique | Should -Be $false
 
-            Assert-MockCalled -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item ''one'' has been defined multiple times:' } -Times 4
-            Assert-MockCalled -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'Name\s+:\s+one' } -Times 4
-            Assert-MockCalled -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item ''two'' has been defined multiple times:' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'Name\s+:\s+two' } -Times 2
-            Assert-MockCalled -CommandName Write-Warning -ModuleName Item -Times 12
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item ''one'' has been defined multiple times:' } -Exactly 4
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'Name\s+:\s+one' } -Exactly 4
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item ''two'' has been defined multiple times:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'Name\s+:\s+two' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -Exactly 12
          }
       }
 
