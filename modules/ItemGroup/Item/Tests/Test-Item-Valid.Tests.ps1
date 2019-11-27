@@ -34,6 +34,7 @@ Describe 'Test-Item-Valid' {
             Mock -CommandName Test-Item -ParameterFilter { $WellFormed.IsPresent } -MockWith { $false <# assumes Item is not wellformed #> }
             Test-Item -Item $item -WellFormed | Should -Be $false
 
+            # and Validity check will not be satisfied anymore
             Test-Item -Item $item -Valid -WarningAction SilentlyContinue | Should -Be $false
 
             Assert-MockCalled -CommandName Test-Item -ParameterFilter { $WellFormed.IsPresent } -Times 2

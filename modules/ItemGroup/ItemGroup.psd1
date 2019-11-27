@@ -27,7 +27,7 @@
    ProcessorArchitecture = 'None'
    PowerShellVersion     = '4.0'
    NestedModules         = @('Item\Item.psm1', 'Group\Group.psm1')
-   RequiredModules       = @('Pscx', 'Psx')
+   RequiredModules       = @('Psx')
 
    AliasesToExport       = '*'
    CmdletsToExport       = '*'
