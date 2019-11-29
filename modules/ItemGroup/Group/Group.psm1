@@ -106,8 +106,6 @@ function Expand-ItemGroup {
                     Where-Object -FilterScript { (Test-Item -Item $_ -Property Condition -Mode None) -or $_.Condition } |
                     ConvertTo-Item
             )
-            # # warns about every duplicate Item
-            # $expandedItemGroup | Test-ItemGroup -Unique -WarningAction:(Resolve-WarningAction $PSBoundParameters) | Out-Null
         }
     }
     end {
