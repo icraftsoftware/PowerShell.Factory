@@ -192,9 +192,7 @@ function Test-ItemGroup {
                 $GroupInfo
             )
             process {
-                if (@('SilentlyContinue', 'Ignore') -notcontains (Resolve-WarningAction $PSBoundParameters)) {
-                    Write-Warning -Message "ItemGroup '$($GroupInfo.Name)' has been defined multiple times."
-                }
+                Write-Warning -Message "ItemGroup '$($GroupInfo.Name)' has been defined multiple times."
                 $GroupInfo
             }
         }
