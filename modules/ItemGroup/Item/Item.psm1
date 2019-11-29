@@ -158,10 +158,12 @@ function Test-Item {
                 [psobject]
                 $Item
             )
-            Write-Warning -Message 'The following Item is invalid because it is either ill-formed or misses either a valid Path or Name property:'
-            # cast to PSCustomObject to ensure Format-List has an output format consistent among hashtable and PSCustomObject
-            ([PSCustomObject]$Item) | Format-List | Out-String -Stream | Where-Object { -not([string]::IsNullOrWhitespace($_)) } | ForEach-Object -Process {
-                Write-Warning -Message $_.Trim()
+            if (@('SilentlyContinue', 'Ignore') -notcontains (Resolve-WarningAction $PSBoundParameters)) {
+                Write-Warning -Message 'The following Item is invalid because it is either ill-formed or misses either a valid Path or Name property:'
+                # cast to PSCustomObject to ensure Format-List has an output format consistent among hashtable and PSCustomObject
+                ([PSCustomObject]$Item) | Format-List | Out-String -Stream | Where-Object { -not([string]::IsNullOrWhitespace($_)) } | ForEach-Object -Process {
+                    Write-Warning -Message $_.Trim()
+                }
             }
         }
 
@@ -226,17 +228,19 @@ function Test-Item {
             param(
                 [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
                 [Microsoft.PowerShell.Commands.GroupInfo]
-                $ItemGroup
+                $GroupInfo
             )
             process {
-                $ItemGroup.Group | ForEach-Object -Process {
-                    Write-Warning -Message "The following Item '$($ItemGroup.Name)' has been defined multiple times:"
-                    # cast to PSCustomObject to ensure Format-List has an output format consistent among hashtable and PSCustomObject
-                    ([PSCustomObject]$_) | Format-List | Out-String -Stream | Where-Object { -not([string]::IsNullOrWhitespace($_)) } | ForEach-Object -Process {
-                        Write-Warning -Message $_.Trim()
+                if (@('SilentlyContinue', 'Ignore') -notcontains (Resolve-WarningAction $PSBoundParameters)) {
+                    $GroupInfo.Group | ForEach-Object -Process {
+                        Write-Warning -Message "The following Item '$($GroupInfo.Name)' has been defined multiple times:"
+                        # cast to PSCustomObject to ensure Format-List has an output format consistent among hashtable and PSCustomObject
+                        ([PSCustomObject]$_) | Format-List | Out-String -Stream | Where-Object { -not([string]::IsNullOrWhitespace($_)) } | ForEach-Object -Process {
+                            Write-Warning -Message $_.Trim()
+                        }
                     }
                 }
-                $ItemGroup
+                $GroupInfo
             }
         }
 

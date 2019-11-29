@@ -21,72 +21,79 @@ Import-Module ItemGroup\Group -Force
 Describe 'Expand-ItemGroup' {
    InModuleScope Group {
 
-      Context 'Name property is expanded after Path property' {
-         Mock -Command Write-Information # avoid cluttering Pester output
-         It 'Computes Name property after Path property.' {
-            Mock -Command Test-Path -ModuleName Item -MockWith { $true <# assumes every Path is valid #> }
-            Mock -Command Resolve-Path -MockWith { [PSCustomObject]@{ ProviderPath = $Path } }
-
-            $itemGroups = @(
+      Context 'Expansion computes Name property after Path property' {
+         Mock -Command Test-Path -ModuleName Item -MockWith { $true <# assumes every Path is valid #> }
+         Mock -Command Resolve-Path -MockWith { [PSCustomObject]@{ ProviderPath = $Path } }
+         It 'computes Name property after Path property.' {
+            $itemGroup = @(
                @{ Group = @( @{ Path = '\\Server\Folder\Item.txt' } ) }
             )
 
-            $expandedItemGroups = $itemGroups | Expand-ItemGroup
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue
 
             $expectedItemGroup = @{
                Group = @(
                   ConvertTo-Item @{ Name = 'Item.txt'; Path = '\\Server\Folder\Item.txt' }
                )
             }
-            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroups | Should -BeNullOrEmpty
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
          }
-         It 'Overwrites Name property after Path property.' {
-            Mock -Command Test-Path -ModuleName Item -MockWith { $true <# assumes every Path is valid #> }
-            Mock -Command Resolve-Path -MockWith { [PSCustomObject]@{ ProviderPath = $Path } }
-
-            $itemGroups = @(
+         It 'computes and overwrites Name property after Path property.' {
+            $itemGroup = @(
                @{ Group = @( @{ Name = 'item-name' ; Path = '\\Server\Folder\Item.txt' } ) }
             )
 
-            $expandedItemGroups = $itemGroups | Expand-ItemGroup
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue
 
             $expectedItemGroup = @{
                Group = @(
                   ConvertTo-Item @{ Name = 'Item.txt'; Path = '\\Server\Folder\Item.txt' }
                )
             }
-            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroups | Should -BeNullOrEmpty
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
          }
       }
 
-      Context 'Throws if Item.Path cannot be resolved.' {
-         Mock -Command Write-Information # avoid cluttering Pester output
+      Context 'Expansion fails if Item.Path cannot be resolved.' {
+         Mock -Command Test-Path -ModuleName Item -MockWith { $true <# assumes every Path is valid #> }
          It 'Throws on the first Item whose Path cannot be resolved.' {
-            Mock -Command Test-Path -ModuleName Item -MockWith { $true <# assumes every Path is valid #> }
-
             $itemGroup = @{ Group1 = @(@{ Path = 'not-found-item-1.dll' }, @{ Path = 'not-found-item-2.exe' }) }
 
-            { Expand-ItemGroup -ItemGroup $itemGroup } | Should -Throw -ExpectedMessage 'not-found-item-1.dll' -ErrorId 'PathNotFound,Microsoft.PowerShell.Commands.ResolvePathCommand'
+            { Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue } |
+               Should -Throw -ExpectedMessage 'not-found-item-1.dll' -ErrorId 'PathNotFound,Microsoft.PowerShell.Commands.ResolvePathCommand'
          }
       }
 
-      Context 'When ItemGroups are given by arguments.' {
-         Mock -Command Write-Information # avoid cluttering Pester output
-         It 'Expands an empty ItemGroup.' {
-            $itemGroup = @{ }
-            Expand-ItemGroup -ItemGroup $itemGroup | Should -BeNullOrEmpty
+      Context 'Expansion when ItemGroups are given by arguments.' {
+         It 'returns empty when expanding an empty ItemGroup.' {
+            Expand-ItemGroup -ItemGroup @{ } -InformationAction SilentlyContinue | Should -BeNullOrEmpty
          }
-         It 'Expands an ItemGroup made only of a default Item.' {
+         It 'returns an empty ItemGroup when expanding an ItemGroup made only of a default Item.' {
             $itemGroup = @{
                Group1 = @( @{ Name = '*'; Condition = ($false) } )
             }
 
-            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup
+            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue
 
             $expectedItemGroup = @{ Group1 = @() }
             Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
          }
-         It 'Expands one ItemGroup.' {
+         It 'returns an empty ItemGroup when expanding duplicate ItemGroups whose one is made only of a default Item.' {
+            $itemGroup = @(
+               @{ Group1 = @( @{ Name = '*'; Condition = $true } ) }
+               @{ Group1 = @(
+                     @{ Name = '*'; Condition = $false }
+                     @{ Name = 'Item' }
+                  )
+               }
+            )
+
+            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue -WarningAction SilentlyContinue
+
+            $expectedItemGroups = @{ Group1 = @( ) }
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroups -DifferenceItemGroup $expandedItemGroup -Verbose | Should -BeNullOrEmpty
+         }
+         It 'returns one ItemGroup when expanding one ItemGroup.' {
             $itemGroup = @{
                Group1 = @(
                   @{ Name = 'Item11' }
@@ -94,7 +101,7 @@ Describe 'Expand-ItemGroup' {
                )
             }
 
-            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup
+            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue
 
             $expectedItemGroup = @{
                Group1 = @(
@@ -104,7 +111,7 @@ Describe 'Expand-ItemGroup' {
             }
             Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
          }
-         It 'Ignores Items whose Condition predicate property is not satisfied.' {
+         It 'filters out Items whose Condition predicate is not satisfied.' {
             $itemGroup = @{
                Group1 = @(
                   @{ Name = 'Item11' }
@@ -112,7 +119,7 @@ Describe 'Expand-ItemGroup' {
                )
             }
 
-            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup
+            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue
 
             $expectedItemGroup = @{
                Group1 = @(
@@ -121,13 +128,13 @@ Describe 'Expand-ItemGroup' {
             }
             Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
          }
-         It 'Expands several ItemGroups.' {
-            $itemGroups = @(
+         It 'returns several ItemGroups when expanding several ItemGroups.' {
+            $itemGroup = @(
                @{ Group1 = @( @{ Name = 'Item11' } , @{ Name = 'Item12'; Condition = $true } ) }
                @{ Group2 = @( @{ Name = 'Item21' } , @{ Name = 'Item22'; Condition = $true } ) }
             )
 
-            $expandedItemGroups = Expand-ItemGroup -ItemGroup $itemGroups
+            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue
 
             $expectedItemGroup = @{
                Group1 = @(
@@ -139,9 +146,28 @@ Describe 'Expand-ItemGroup' {
                   ConvertTo-Item @{ Name = 'Item22'; Condition = $true }
                )
             }
-            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroups | Should -BeNullOrEmpty
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
          }
-         It 'Merges default Item''s properties in every Item.' {
+         It 'merges default Item''s properties back into every Item.' {
+            $itemGroup = @{
+               Group1 = @(
+                  @{ Name = '*'; Account = 'Account' }
+                  @{ Name = 'Item11' }
+                  @{ Name = 'Item12'; Condition = $true }
+               )
+            }
+
+            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue
+
+            $expectedItemGroup = @{
+               Group1 = @(
+                  ConvertTo-Item @{ Name = 'Item11'; Account = 'Account' }
+                  ConvertTo-Item @{ Name = 'Item12'; Account = 'Account' ; Condition = $true }
+               )
+            }
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
+         }
+         It 'merges default Item''s condition property back in every Item but does not overwrite it.' {
             $itemGroup = @{
                Group1 = @(
                   @{ Name = '*'; Condition = $false }
@@ -150,7 +176,7 @@ Describe 'Expand-ItemGroup' {
                )
             }
 
-            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup
+            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue
 
             $expectedItemGroup = @{
                Group1 = @(
@@ -159,259 +185,235 @@ Describe 'Expand-ItemGroup' {
             }
             Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
          }
-         # It 'Expands duplicate ItemGroups where one is made only of a default Item.' {
-         #    Mock -Command Write-Warning
-         #    Mock -Command Write-Warning -ModuleName Item
-
-         #    $itemGroups = @(
-         #       @{ Group1 = @( @{ Name = '*'; Condition = $true } ) }
-         #       @{ Group1 = @(
-         #             @{ Name = '*'; Condition = ($false) }
-         #             @{ Name = 'Item' }
-         #          )
-         #       }
-         #    )
-
-         #    $expandedItemGroups = Expand-ItemGroup -ItemGroup $itemGroups
-
-         #    $expectedItemGroups = @{ Group1 = @( ConvertTo-Item @{ Name = 'Item'; Condition = $false } ) }
-         #    Compare-ItemGroup -ReferenceItemGroup $expectedItemGroups -DifferenceItemGroup $expandedItemGroups -Verbose | Should -BeNullOrEmpty
-
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''Group1'' has been defined multiple times.' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'Item ''*'' has been defined multiple times.' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'Items of ItemGroup ''Group1'' have been redefined.' }
-         # }
       }
 
-      Context 'When ItemGroups are given by pipeline.' {
-         # Mock -Command Write-Information # avoid cluttering Pester output
-         # Mock -Command Resolve-Path -MockWith { [PSCustomObject]@{ ProviderPath = $Path } }
-         # It 'Expands one ItemGroup.' {
-         #    $itemGroup = @{
-         #       Group1 = @(
-         #          @{ Name = 'Item11' }
-         #          @{ Name = 'Item12'; Condition = $true }
-         #       )
-         #       Group2 = @(
-         #          @{ Name = 'Item21' }
-         #          @{ Name = 'Item22'; Condition = $true }
-         #       )
-         #    }
+      Context 'Expansion when ItemGroups are given by pipeline.' {
+         It 'returns empty when expanding an empty ItemGroup.' {
+            @{ } | Expand-ItemGroup -InformationAction SilentlyContinue | Should -BeNullOrEmpty
+         }
+         It 'returns an empty ItemGroup when expanding an ItemGroup made only of a default Item.' {
+            $itemGroup = @{
+               Group1 = @( @{ Name = '*'; Condition = ($false) } )
+            }
 
-         #    $expandedItemGroup = $itemGroup | Expand-ItemGroup
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue
 
-         #    $expectedItemGroup = @{
-         #       Group1 = @(
-         #          ConvertTo-Item @{ Name = 'Item11' }
-         #          ConvertTo-Item @{ Name = 'Item12'; Condition = $true }
-         #       )
-         #       Group2 = @(
-         #          ConvertTo-Item @{ Name = 'Item21' }
-         #          ConvertTo-Item @{ Name = 'Item22'; Condition = $true }
-         #       )
-         #    }
-         #    Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
-         # }
-         # It 'Expands an ItemGroup made only of a default Item.' {
-         #    $itemGroup = @{
-         #       Group1 = @(
-         #          @{ Name = '*'; Condition = ($false) }
-         #       )
-         #    }
+            $expectedItemGroup = @{ Group1 = @() }
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
+         }
+         It 'returns an empty ItemGroup when expanding duplicate ItemGroups whose one is made only of a default Item.' {
+            $itemGroup = @(
+               @{ Group1 = @( @{ Name = '*'; Condition = $true } ) }
+               @{ Group1 = @(
+                     @{ Name = '*'; Condition = $false }
+                     @{ Name = 'Item' }
+                  )
+               }
+            )
 
-         #    $expandedItemGroup = $itemGroup | Expand-ItemGroup
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue -WarningAction SilentlyContinue
 
-         #    $expectedItemGroup = @{ Group1 = @() }
-         #    Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
-         # }
-         # It 'Expands serveral ItemGroups.' {
-         #    $itemGroups = @(
-         #       @{ Group1 = @( @{ Name = 'Item11' } , @{ Name = 'Item12'; Condition = $true } ) }
-         #       @{ Group2 = @( @{ Name = 'Item21' } , @{ Name = 'Item22'; Condition = $true } ) }
-         #    )
+            $expectedItemGroups = @{ Group1 = @( ) }
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroups -DifferenceItemGroup $expandedItemGroup -Verbose | Should -BeNullOrEmpty
+         }
+         It 'returns one ItemGroup when expanding one ItemGroup.' {
+            $itemGroup = @{
+               Group1 = @(
+                  @{ Name = 'Item11' }
+                  @{ Name = 'Item12'; Condition = $true }
+               )
+            }
 
-         #    $expandedItemGroups = $itemGroups | Expand-ItemGroup
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue
 
-         #    $expectedItemGroup = @{
-         #       Group1 = @(
-         #          ConvertTo-Item @{ Name = 'Item11' }
-         #          ConvertTo-Item @{ Name = 'Item12'; Condition = $true }
-         #       )
-         #       Group2 = @(
-         #          ConvertTo-Item @{ Name = 'Item21' }
-         #          ConvertTo-Item @{ Name = 'Item22'; Condition = $true }
-         #       )
-         #    }
-         #    Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroups | Should -BeNullOrEmpty
+            $expectedItemGroup = @{
+               Group1 = @(
+                  ConvertTo-Item @{ Name = 'Item11' }
+                  ConvertTo-Item @{ Name = 'Item12'; Condition = $true }
+               )
+            }
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
+         }
+         It 'filters out Items whose Condition predicate is not satisfied.' {
+            $itemGroup = @{
+               Group1 = @(
+                  @{ Name = 'Item11' }
+                  @{ Name = 'Item12'; Condition = $false }
+               )
+            }
 
-         # }
-         # It 'Expands duplicate ItemGroups where one is made only of a default Item.' {
-         #    Mock -Command Write-Warning
-         #    # TODO Mock -Command Write-Warning -ModuleName Item
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue
 
-         #    $itemGroups = @(
-         #       @{ Group1 = @( @{ Name = '*'; Condition = $true } ) }
-         #       @{ Group1 = @(
-         #             @{ Name = '*'; Condition = ($false) }
-         #             @{ Name = 'Item' }
-         #          )
-         #       }
-         #    )
+            $expectedItemGroup = @{
+               Group1 = @(
+                  ConvertTo-Item @{ Name = 'Item11' }
+               )
+            }
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
+         }
+         It 'returns several ItemGroups when expanding several ItemGroups.' {
+            $itemGroup = @(
+               @{ Group1 = @( @{ Name = 'Item11' } , @{ Name = 'Item12'; Condition = $true } ) }
+               @{ Group2 = @( @{ Name = 'Item21' } , @{ Name = 'Item22'; Condition = $true } ) }
+            )
 
-         #    $expandedItemGroups = $itemGroups | Expand-ItemGroup
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue
 
-         #    $expectedItemGroups = @{ Group1 = @( ConvertTo-Item @{ Name = 'Item'; Condition = $false } ) }
-         #    Compare-ItemGroup -ReferenceItemGroup $expectedItemGroups -DifferenceItemGroup $expandedItemGroups -Verbose | Should -BeNullOrEmpty
+            $expectedItemGroup = @{
+               Group1 = @(
+                  ConvertTo-Item @{ Name = 'Item11' }
+                  ConvertTo-Item @{ Name = 'Item12'; Condition = $true }
+               )
+               Group2 = @(
+                  ConvertTo-Item @{ Name = 'Item21' }
+                  ConvertTo-Item @{ Name = 'Item22'; Condition = $true }
+               )
+            }
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
+         }
+         It 'merges default Item''s properties back into every Item.' {
+            $itemGroup = @{
+               Group1 = @(
+                  @{ Name = '*'; Account = 'Account' }
+                  @{ Name = 'Item11' }
+                  @{ Name = 'Item12'; Condition = $true }
+               )
+            }
 
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'Items of ItemGroup ''Group1'' have been redefined.' }
-         #    # TODO Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'Item ''*'' has been defined multiple times.' }
-         # }
-         # It 'Flattens vector Items.' {
-         #    $itemGroups = @(
-         #       @{ Group1 = @( @{ Path = @('Item1', 'Item2', 'Item3') ; Condition = $true } ) }
-         #    )
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue
 
-         #    $expandedItemGroups = $itemGroups | Expand-ItemGroup
+            $expectedItemGroup = @{
+               Group1 = @(
+                  ConvertTo-Item @{ Name = 'Item11'; Account = 'Account' }
+                  ConvertTo-Item @{ Name = 'Item12'; Account = 'Account' ; Condition = $true }
+               )
+            }
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
+         }
+         It 'merges default Item''s condition property back in every Item but does not overwrite it.' {
+            $itemGroup = @{
+               Group1 = @(
+                  @{ Name = '*'; Condition = $false }
+                  @{ Name = 'Item11' }
+                  @{ Name = 'Item12'; Condition = $true }
+               )
+            }
 
-         #    $expectedItemGroup = @{
-         #       Group1 = @(
-         #          ConvertTo-Item @{ Name = 'Item1'; Path = 'Item1'; Condition = $true }
-         #          ConvertTo-Item @{ Name = 'Item2'; Path = 'Item2'; Condition = $true }
-         #          ConvertTo-Item @{ Name = 'Item3'; Path = 'Item3'; Condition = $true }
-         #       )
-         #    }
-         #    Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroups | Should -BeNullOrEmpty
-         # }
-         # It 'Flattens vector Items and merges default Item''s properties.' {
-         #    $itemGroups = @{ Group1 = @(
-         #          @{ Name = '*'; Condition = $false; Extra = 'Dummy' }
-         #          @{ Path = @('Item1', 'Item2', 'Item3') ; Condition = $true }
-         #       )
-         #    }
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue
 
-         #    $expandedItemGroups = $itemGroups | Expand-ItemGroup
-
-         #    $expectedItemGroup = @{
-         #       Group1 = @(
-         #          ConvertTo-Item @{ Name = 'Item1'; Path = 'Item1'; Condition = $true; Extra = 'Dummy' }
-         #          ConvertTo-Item @{ Name = 'Item2'; Path = 'Item2'; Condition = $true; Extra = 'Dummy' }
-         #          ConvertTo-Item @{ Name = 'Item3'; Path = 'Item3'; Condition = $true; Extra = 'Dummy' }
-         #       )
-         #    }
-         #    Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroups | Should -BeNullOrEmpty
-         # }
-         # It 'Merges default Item''s properties in every Item.' {
-         #    $itemGroup = @{
-         #       Group1 = @(
-         #          @{ Name = '*'; Condition = $false }
-         #          @{ Name = 'Item11' }
-         #          @{ Name = 'Item12'; Condition = $true }
-         #       )
-         #    }
-
-         #    $expandedItemGroup = $itemGroup | Expand-ItemGroup
-
-         #    $expectedItemGroup = @{
-         #       Group1 = @(
-         #          ConvertTo-Item @{ Name = 'Item11'; Condition = $false }
-         #          ConvertTo-Item @{ Name = 'Item12'; Condition = $true }
-         #       )
-         #    }
-         #    Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
-         # }
+            $expectedItemGroup = @{
+               Group1 = @(
+                  ConvertTo-Item @{ Name = 'Item12'; Condition = $true }
+               )
+            }
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
+         }
       }
 
-      Context 'Informs about progress' {
-         # It 'Informs about progress.' {
-         #    $itemGroups = @(
-         #       @{ ApplicationBindings = @(@{ Name = 'a'; Condition = $false }) }
-         #       @{ Schemas = @(@{ Name = 's'; Condition = $false }) }
-         #       @{ Transforms = @(@{ Name = 't'; Condition = $false }) }
-         #       @{ Orchestrations = @(@{ Name = 'o'; Condition = $false }) }
-         #    )
+      Context 'Expansion flattens Item.Path property' {
+         Mock -Command Test-Path -ModuleName Item -MockWith { $true <# assumes every Path is valid #> }
+         Mock -Command Resolve-Path -MockWith { [PSCustomObject]@{ ProviderPath = $Path } }
+         It 'flattens Items whose Path property denotes a list of paths.' {
+            $itemGroup = @( @{ Group1 = @(
+                     @{ Path = @('z:\folder\Item1.dll', 'z:\folder\Item2.dll', 'z:\folder\Item3.dll') ; Condition = $true }
+                  )
+               }
+            )
 
-         #    Expand-ItemGroup -ItemGroup $itemGroups
+            $expandedItemGroup = Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue
 
-         #    Assert-MockCalled -Scope It -CommandName Write-Information -Times 4 # has been called only twice
-         #    Assert-MockCalled -Scope It -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''ApplicationBindings''.' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''Schemas''.' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''Transforms''.' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''Orchestrations''.' }
-         # }
-         # It 'Informs about progress.' {
-         #    $itemGroup = @{
-         #       ApplicationBindings = @(@{ Path = 'a'; Condition = $false })
-         #       Schemas             = @(@{ Path = 's'; Condition = $false })
-         #       Transforms          = @(@{ Path = 't'; Condition = $false })
-         #       Orchestrations      = @(@{ Path = 'o'; Condition = $false })
-         #    }
+            $expectedItemGroup = @{
+               Group1 = @(
+                  ConvertTo-Item @{ Name = 'Item1.dll'; Path = 'z:\folder\Item1.dll'; Condition = $true }
+                  ConvertTo-Item @{ Name = 'Item2.dll'; Path = 'z:\folder\Item2.dll'; Condition = $true }
+                  ConvertTo-Item @{ Name = 'Item3.dll'; Path = 'z:\folder\Item3.dll'; Condition = $true }
+               )
+            }
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
+         }
+         It 'flattens Items whose Path property denotes a list of paths and merges default Item''s properties.' {
+            $itemGroup = @{ Group1 = @(
+                  @{ Name = '*'; Condition = $false; Extra = 'Dummy' }
+                  @{ Path = @('z:\folder\Item1.dll', 'z:\folder\Item2.dll', 'z:\folder\Item3.dll') ; Condition = $true }
+               )
+            }
 
-         #    $itemGroup | Expand-ItemGroup
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue
 
-         #    Assert-MockCalled -Scope It -CommandName Write-Information -Times 4 # has been called only four times
-         #    Assert-MockCalled -Scope It -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''ApplicationBindings''.' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''Schemas''.' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''Transforms''.' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''Orchestrations''.' }
-         # }
+            $expectedItemGroup = @{
+               Group1 = @(
+                  ConvertTo-Item @{ Name = 'Item1.dll'; Path = 'z:\folder\Item1.dll'; Condition = $true; Extra = 'Dummy' }
+                  ConvertTo-Item @{ Name = 'Item2.dll'; Path = 'z:\folder\Item2.dll'; Condition = $true; Extra = 'Dummy' }
+                  ConvertTo-Item @{ Name = 'Item3.dll'; Path = 'z:\folder\Item3.dll'; Condition = $true; Extra = 'Dummy' }
+               )
+            }
+            Compare-ItemGroup -ReferenceItemGroup $expectedItemGroup -DifferenceItemGroup $expandedItemGroup | Should -BeNullOrEmpty
+         }
       }
 
-      Context 'Warns about issues' {
-         # It 'Traces invalid Items.' {
-         #    Mock -Command Write-Warning -ModuleName Item
+      Context 'Expansion informs about progress' {
+         Mock -Command Write-Information
+         It 'Informs about each ItemGroup that is expanded.' {
+            $itemGroup = @(
+               @{ ApplicationBindings = @(@{ Name = 'a'; Condition = $false }) }
+               @{ Schemas = @(@{ Name = 's'; Condition = $false }) }
+               @{ Transforms = @(@{ Name = 't'; Condition = $false }) }
+               @{ Orchestrations = @(@{ Name = 'o'; Condition = $false }) }
+            )
+            Expand-ItemGroup -ItemGroup $itemGroup -InformationAction Continue
 
-         #    $itemGroup = @{ Group = @(@{ LastName = 'Stark' }, @{ LastName = 'Potts' }) }
+            Assert-MockCalled -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''ApplicationBindings''.' }
+            Assert-MockCalled -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''Schemas''.' }
+            Assert-MockCalled -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''Transforms''.' }
+            Assert-MockCalled -CommandName Write-Information -ParameterFilter { $MessageData -eq 'Expanding ItemGroup ''Orchestrations''.' }
+            Assert-MockCalled -CommandName Write-Information -Exactly 4
+         }
+      }
 
-         #    { Expand-ItemGroup -ItemGroup $itemGroup } | Should -Not -Throw
+      Context 'Expansion warns about every issue' {
+         Mock -Command Write-Warning -ModuleName Group
+         Mock -Command Write-Warning -ModuleName Item
+         It 'warns about every invalid Item.' {
+            $itemGroup = @{ Group = @(@{ LastName = 'Stark' }, @{ LastName = 'Potts' }) }
+            Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue
 
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item is invalid because it is either ill-formed or misses either a Name or Path property:' } -Times 2
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'Name\s+Value' } -Times 2
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'LastName\s+Stark' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'LastName\s+Potts' }
-         # }
-         # It 'Traces ItemGroup duplicates.' {
-         #    Mock -Command Write-Warning -ModuleName Group
-         #    Mock -Command Write-Warning -ModuleName Item
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item is invalid because it is either ill-formed or misses either a valid Path or Name property:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'LastName\s+:\s+Stark' } -Exactly 1
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'LastName\s+:\s+Potts' } -Exactly 1
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -Exactly 4
+         }
+         It 'warns about each duplicate Item.' {
+            $itemGroup = @{
+               ApplicationBindings = @(
+                  @{ Name = 'a'; Condition = $false }
+                  @{ Name = 'a'; Condition = $false }
+               )
+            }
+            Expand-ItemGroup -ItemGroup $itemGroup
 
-         #    $itemGroups = @(
-         #       @{ ApplicationBindings = @(@{ Name = 'a'; Condition = $false }) }
-         #       @{ ApplicationBindings = @(@{ Name = 'a'; Condition = $false }) }
-         #    )
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'The following Item ''a'' has been defined multiple times:' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'Condition\s+:\s+False' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -match 'Name\s+:\s+a' } -Exactly 2
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -Exactly 6
+         }
+         It 'warns about each duplicate ItemGroup.' {
+            $itemGroup = @(
+               @{ ApplicationBindings = @(@{ Name = 'a'; Condition = $false }) }
+               @{ ApplicationBindings = @(@{ Name = 'a'; Condition = $false }) }
+            )
+            Expand-ItemGroup -ItemGroup $itemGroup
 
-         #    Expand-ItemGroup -ItemGroup $itemGroups
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''ApplicationBindings'' has been defined multiple times.' } -Exactly 1
+         }
+         It 'warns about every redefined ItemGroup.' {
+            $itemGroup = @(
+               @{ ApplicationBindings = @(@{ Name = 'a'; Condition = $false }) }
+               @{ ApplicationBindings = @(@{ Name = 'a'; Condition = $false }) }
+            )
+            Expand-ItemGroup -ItemGroup $itemGroup
 
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''ApplicationBindings'' has been defined multiple times.' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'Items of ItemGroup ''ApplicationBindings'' have been redefined.' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'Item ''a'' has been defined multiple times.' }
-         # }
-         # It 'Traces Item duplicates.' {
-         #    Mock -Command Write-Warning -ModuleName Item
-
-         #    $itemGroup = @{
-         #       ApplicationBindings = @(
-         #          @{ Name = 'a'; Condition = $false }
-         #          @{ Name = 'a'; Condition = $false }
-         #       )
-         #    }
-
-         #    Expand-ItemGroup -ItemGroup $itemGroup
-
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'Item ''a'' has been defined multiple times.' }
-         # }
-         # It 'Warns about every redefined ItemGroup.' {
-         #    Mock -Command Write-Warning -ModuleName Group
-         #    Mock -Command Write-Warning -ModuleName Item
-
-         #    $itemGroups = @(
-         #       @{ ApplicationBindings = @(@{ Name = 'a'; Condition = $false }) }
-         #       @{ ApplicationBindings = @(@{ Name = 'a'; Condition = $false }) }
-         #    )
-
-         #    Expand-ItemGroup -ItemGroup $itemGroups
-
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'Items of ItemGroup ''ApplicationBindings'' have been redefined.' }
-         #    Assert-MockCalled -Scope It -CommandName Write-Warning -ModuleName Item -ParameterFilter { $Message -eq 'Item ''a'' has been defined multiple times.' }
-         # }
+            Assert-MockCalled -Scope It -CommandName Write-Warning -ParameterFilter { $Message -eq 'ItemGroup ''ApplicationBindings'' is being redefined.' } -Exactly 1
+         }
       }
 
    }

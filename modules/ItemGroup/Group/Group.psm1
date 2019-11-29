@@ -71,9 +71,9 @@ function Expand-ItemGroup {
     }
     process {
         # warns about every duplicate ItemGroup and Item
-        # $ItemGroup | Test-ItemGroup -Unique | Out-Null
+        $ItemGroup | Test-ItemGroup -Unique -WarningAction:(Resolve-WarningAction $PSBoundParameters) | Out-Null
         $ItemGroup | ForEach-Object -Process { $_ } -PipelineVariable currentItemGroup | Select-Object -ExpandProperty Keys -PipelineVariable itemGroupName | ForEach-Object -Process {
-            Write-Information -MessageData "Expanding ItemGroup '$itemGroupName'." -InformationAction Continue
+            Write-Information -MessageData "Expanding ItemGroup '$itemGroupName'."
             if ($currentItemGroup.$itemGroupName -isnot [array]) { throw "ItemGroup '$itemGroupName' must be an array of Items." }
             if ($expandedItemGroup.ContainsKey($itemGroupName)) { Write-Warning -Message "ItemGroup '$itemGroupName' is being redefined." }
             # compute ItemGroup's default Item to be merged into every other Item
@@ -82,10 +82,11 @@ function Expand-ItemGroup {
                 $currentItemGroup.$itemGroupName |
                     Where-Object -PipelineVariable validItem -FilterScript {
                         # select valid and non-default Items
-                        (Test-Item -Item $_ -Valid) -and ((Test-Item -Item $_ -Property Name -Mode None) -or $_.Name -ne '*')
+                        (Test-Item -Item $_ -Valid -WarningAction SilentlyContinue) `
+                            -and ((Test-Item -Item $_ -Property Name -Mode None -WarningAction SilentlyContinue) -or $_.Name -ne '*')
                     } |
                     ForEach-Object -PipelineVariable flattenedItem -Process {
-                        if (Test-Item -Item $validItem -Property Path) {
+                        if (Test-Item -Item $validItem -Property Path -WarningAction SilentlyContinue) {
                             # flatten Items whose Path is a list of paths
                             $validItem.Path |
                                 Resolve-Path -ErrorAction Stop <# throw if Path cannot be resolved #> |
@@ -105,8 +106,8 @@ function Expand-ItemGroup {
                     Where-Object -FilterScript { (Test-Item -Item $_ -Property Condition -Mode None) -or $_.Condition } |
                     ConvertTo-Item
             )
-            # $ItemGroup | Test-ItemGroup -Unique | Out-Null
-            # $expandedItemGroup.$itemGroupName | Test-Item -Unique | Out-Null
+            # # warns about every duplicate Item
+            # $expandedItemGroup | Test-ItemGroup -Unique -WarningAction:(Resolve-WarningAction $PSBoundParameters) | Out-Null
         }
     }
     end {
@@ -146,7 +147,7 @@ function Import-ItemGroup {
     }
     process {
         $absolutePath = Resolve-Path -Path $Path
-        Write-Information -MessageData "Importing ItemGroups from file '$absolutePath'." -InformationAction Continue
+        Write-Information -MessageData "Importing ItemGroups from file '$absolutePath'."
         # make sure current folder for each item group definition file is its containing folder
         $itemGroupFolderPath = Split-Path -Path $absolutePath -Parent
         Write-Verbose -Message "Setting location to '$itemGroupFolderPath'."
@@ -163,26 +164,6 @@ function Import-ItemGroup {
         Write-Verbose -Message "Restoring initial location to '$location'."
     }
 }
-
-# function Merge-ItemGroup {
-#    # merge ItemGroups having same name
-#    [CmdletBinding()]
-#    param(
-#       [Parameter(Position = 0, Mandatory = $true)]
-#       [hashtable[]]
-#       $ItemGroup
-#    )
-#    $result = @{ }
-#    foreach ($group in $ItemGroup) {
-#       foreach ($key in $group.Keys) {
-#          # TODO ensure value is an array
-#          $result[$key] += $group[$key]
-#       }
-#    }
-#    $result
-#    # $bindings = $hash.ApplicationBindings.Where{ $_.Condition | Expand-Value }
-#    # $bindings | ForEach-Object { @{  Name = ($_.Name | Expand-Value) ; Path = ($_.Path | Expand-Value) } } | Format-Table
-# }
 
 function Test-ItemGroup {
     [CmdletBinding()]
@@ -203,15 +184,30 @@ function Test-ItemGroup {
         if ($Unique) { $allItemGroups += @( $ItemGroup | ForEach-Object -Process { $_ } ) }
     }
     end {
-        if ($Unique) {
-            $duplicates = @(
-                $allItemGroups |
-                    Select-Object -ExpandProperty Keys |
-                    Group-Object |
-                    Where-Object -FilterScript { $_.Count -gt 1 }
+
+        function private:Trace-DuplicateItemGroup {
+            [CmdletBinding()]
+            [OutputType([Microsoft.PowerShell.Commands.GroupInfo])]
+            param(
+                [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+                [Microsoft.PowerShell.Commands.GroupInfo]
+                $GroupInfo
             )
-            $duplicates | ForEach-Object -Process { Write-Warning -Message "ItemGroup '$($_.Name)' has been defined multiple times." }
-            $itemGroupsAreUnique = $duplicates.Length -eq 0
+            process {
+                if (@('SilentlyContinue', 'Ignore') -notcontains (Resolve-WarningAction $PSBoundParameters)) {
+                    Write-Warning -Message "ItemGroup '$($GroupInfo.Name)' has been defined multiple times."
+                }
+                $GroupInfo
+            }
+        }
+
+        if ($Unique) {
+            $itemGroupsAreUnique = $allItemGroups |
+                Select-Object -ExpandProperty Keys |
+                Group-Object |
+                Where-Object -FilterScript { $_.Count -gt 1 } |
+                private:Trace-DuplicateItemGroup -WarningAction:(Resolve-WarningAction $PSBoundParameters) |
+                Test-None
             $itemsAreUnique = $allItemGroups |
                 ForEach-Object -Process { $_.Values } |
                 Test-Item -Unique -WarningAction:(Resolve-WarningAction $PSBoundParameters)

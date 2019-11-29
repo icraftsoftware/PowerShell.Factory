@@ -19,6 +19,7 @@
 Set-StrictMode -Version Latest
 
 function Resolve-WarningAction([psobject] $boundParameters) {
+    # SilentlyContinue, Stop, Continue, Inquire, Ignore, Suspend
     if ($boundParameters.ContainsKey('WarningAction')) {
         $boundParameters.WarningAction
     }
