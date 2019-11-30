@@ -89,7 +89,7 @@ Describe 'Merge-HashTable' {
                 Compare-HashTable -ReferenceHashTable $expectedResult -DifferenceHashTable $mergedHashTable | Should -BeNullOrEmpty
             }
             It 'Is verbose about every overwritten property.' {
-                Mock -Command Write-Verbose
+                Mock -CommandName Write-Verbose
                 $hashTables = @( @{FirstName = 'Tony' }, @{FirstName = 'Natacha' }, @{FirstName = 'Peter' }, @{Alias = 'Spider Man' } )
 
                 $hashTables | Merge-HashTable -Force -Verbose

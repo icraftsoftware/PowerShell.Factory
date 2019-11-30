@@ -22,14 +22,14 @@ Describe 'Expand-ItemGroup' {
    InModuleScope Group {
 
       Context 'Expansion computes Name property after Path property' {
-         Mock -Command Test-Path -ModuleName Item -MockWith { $true <# assumes every Path is valid #> }
-         Mock -Command Resolve-Path -MockWith { [PSCustomObject]@{ ProviderPath = $Path } }
+         Mock -CommandName Test-Item -ParameterFilter { $Valid.IsPresent } -MockWith { $true <# assumes every Item is valid #> }
+         Mock -CommandName Resolve-Path -MockWith { [PSCustomObject]@{ ProviderPath = $Path } }
          It 'computes Name property after Path property.' {
             $itemGroup = @(
                @{ Group = @( @{ Path = '\\Server\Folder\Item.txt' } ) }
             )
 
-            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue -WarningAction SilentlyContinue
 
             $expectedItemGroup = @{
                Group = @(
@@ -43,7 +43,7 @@ Describe 'Expand-ItemGroup' {
                @{ Group = @( @{ Name = 'item-name' ; Path = '\\Server\Folder\Item.txt' } ) }
             )
 
-            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue
+            $expandedItemGroup = $itemGroup | Expand-ItemGroup -InformationAction SilentlyContinue -WarningAction SilentlyContinue
 
             $expectedItemGroup = @{
                Group = @(
@@ -55,11 +55,11 @@ Describe 'Expand-ItemGroup' {
       }
 
       Context 'Expansion fails if Item.Path cannot be resolved.' {
-         Mock -Command Test-Path -ModuleName Item -MockWith { $true <# assumes every Path is valid #> }
+         Mock -CommandName Test-Item -ParameterFilter { $Valid.IsPresent } -MockWith { $true <# assumes every Item is valid #> }
          It 'Throws on the first Item whose Path cannot be resolved.' {
             $itemGroup = @{ Group1 = @(@{ Path = 'not-found-item-1.dll' }, @{ Path = 'not-found-item-2.exe' }) }
 
-            { Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue } |
+            { Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue -WarningAction SilentlyContinue } |
                Should -Throw -ExpectedMessage 'not-found-item-1.dll' -ErrorId 'PathNotFound,Microsoft.PowerShell.Commands.ResolvePathCommand'
          }
       }
@@ -311,8 +311,9 @@ Describe 'Expand-ItemGroup' {
       }
 
       Context 'Expansion flattens Item.Path property' {
-         Mock -Command Test-Path -ModuleName Item -MockWith { $true <# assumes every Path is valid #> }
-         Mock -Command Resolve-Path -MockWith { [PSCustomObject]@{ ProviderPath = $Path } }
+         Mock -CommandName Get-Item -ModuleName Item -MockWith { [PSCustomObject]@{ PSIsContainer = $false } }
+         Mock -CommandName Test-Item -ParameterFilter { $Valid.IsPresent } -MockWith { $true <# assumes every Item is valid #> }
+         Mock -CommandName Resolve-Path -MockWith { [PSCustomObject]@{ ProviderPath = $Path } }
          It 'flattens Items whose Path property denotes a list of paths.' {
             $itemGroup = @( @{ Group1 = @(
                      @{ Path = @('z:\folder\Item1.dll', 'z:\folder\Item2.dll', 'z:\folder\Item3.dll') ; Condition = $true }
@@ -352,7 +353,7 @@ Describe 'Expand-ItemGroup' {
       }
 
       Context 'Expansion informs about progress' {
-         Mock -Command Write-Information
+         Mock -CommandName Write-Information
          It 'Informs about each ItemGroup that is expanded.' {
             $itemGroup = @(
                @{ ApplicationBindings = @(@{ Name = 'a'; Condition = $false }) }
@@ -371,8 +372,8 @@ Describe 'Expand-ItemGroup' {
       }
 
       Context 'Expansion warns about every issue' {
-         Mock -Command Write-Warning -ModuleName Group
-         Mock -Command Write-Warning -ModuleName Item
+         Mock -CommandName Write-Warning -ModuleName Group
+         Mock -CommandName Write-Warning -ModuleName Item
          It 'warns about every invalid Item.' {
             $itemGroup = @{ Group = @(@{ LastName = 'Stark' }, @{ LastName = 'Potts' }) }
             Expand-ItemGroup -ItemGroup $itemGroup -InformationAction SilentlyContinue

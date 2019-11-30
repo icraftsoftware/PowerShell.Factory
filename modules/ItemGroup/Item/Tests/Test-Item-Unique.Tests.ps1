@@ -41,6 +41,7 @@ Describe 'Test-Item-Unique' {
       }
 
       Context 'Unicity check when Items are given by argument.' {
+         Mock -CommandName Test-Item -ParameterFilter { $Valid.IsPresent } -MockWith { $true <# assumes every Item is valid #> }
          It 'Is true when Items have different Names.' {
             Test-Item -Item @( @{ Name = 'one' }, [PSCustomObject]@{ Name = 'two' } ) -Unique | Should -Be $true
          }
@@ -48,19 +49,15 @@ Describe 'Test-Item-Unique' {
             Test-Item -Item @( @{ Name = 'one' }, [PSCustomObject]@{ Name = 'one' } ) -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is true when Items have different Paths.' {
-            Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
             Test-Item -Item @( @{ Path = 'z:\one' }, [PSCustomObject]@{ Path = 'z:\two' } ) -Unique | Should -Be $true
          }
          It 'Is false when Items have the same Path.' {
-            Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
             Test-Item -Item @( @{ Path = 'z:\one' }, [PSCustomObject]@{ Path = 'z:\one' } ) -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is false when Items have different Names but the same Path beause Path has precedence.' {
-            Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
             Test-Item -Item @( @{ Name = 'Stark' ; Path = 'z:\one' }, [PSCustomObject]@{ Stark = 'Parker' ; Path = 'z:\one' } ) -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is true when Items have the same Name but different Paths because Path has precedence.' {
-            Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
             Test-Item -Item @( @{ Name = 'same' ; Path = 'z:\one' }, [PSCustomObject]@{ Stark = 'same' ; Path = 'z:\two' } ) -Unique | Should -Be $true
          }
          It 'Is false for an array of Items.' {
@@ -77,6 +74,7 @@ Describe 'Test-Item-Unique' {
       }
 
       Context 'Unicity check when Items are given by pipeline.' {
+         Mock -CommandName Test-Item -ParameterFilter { $Valid.IsPresent } -MockWith { $true <# assumes every Item is valid #> }
          It 'Is true when Items have different Names.' {
             @{ Name = 'one' }, [PSCustomObject]@{ Name = 'two' } | Test-Item -Unique | Should -Be $true
          }
@@ -84,19 +82,15 @@ Describe 'Test-Item-Unique' {
             @{ Name = 'one' }, [PSCustomObject]@{ Name = 'one' } | Test-Item -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is true when Items have different Paths.' {
-            Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
             @{ Path = 'z:\one' }, [PSCustomObject]@{ Path = 'z:\two' } | Test-Item -Unique | Should -Be $true
          }
          It 'Is false when Items have the same Path.' {
-            Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
             @( @{ Path = 'z:\one' }, [PSCustomObject]@{ Path = 'z:\one' } ) | Test-Item -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is false when Items have different Names but the same Path beause Path has precedence.' {
-            Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
             @( @{ Name = 'Stark' ; Path = 'z:\one' }, [PSCustomObject]@{ Stark = 'Parker' ; Path = 'z:\one' } ) | Test-Item -Unique -WarningAction SilentlyContinue | Should -Be $false
          }
          It 'Is true when Items have the same Name but different Paths because Path has precedence.' {
-            Mock -CommandName Test-Path -MockWith { $true <# assumes every Path is valid #> }
             @( @{ Name = 'same' ; Path = 'z:\one' }, [PSCustomObject]@{ Stark = 'same' ; Path = 'z:\two' } ) | Test-Item -Unique | Should -Be $true
          }
          It 'Is false for an array of Items.' {

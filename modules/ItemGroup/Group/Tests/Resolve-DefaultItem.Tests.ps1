@@ -60,7 +60,7 @@ Describe 'Resolve-DefaultItem' {
          Compare-HashTable -ReferenceHashTable $expectedResult -DifferenceHashTable $defaultItem | Should -BeNullOrEmpty
       }
       It 'Is based on Name property only.' {
-         Mock -CommandName Test-Path -ModuleName Item -MockWith { $true <# assumes every path is valid #> }
+         Mock -CommandName Test-Item -ModuleName Item -ParameterFilter { $Valid.IsPresent } -MockWith { $true <# assumes every item is valid #> }
          $hashTables = @(
             @{ Path = '*'; FirstName = 'Tony' },
             @{ Path = '*'; LastName = 'Stark' },
@@ -75,7 +75,7 @@ Describe 'Resolve-DefaultItem' {
 
       }
       It 'Ignores invalid Items even when Name is ''*''.' {
-         Mock -CommandName Test-Path -ModuleName Item -MockWith { $false <# assumes every path is invalid #> }
+         Mock -CommandName Test-Item -ModuleName Item -ParameterFilter { $Valid.IsPresent } -MockWith { $false <# assumes every item is invalid #> }
          $hashTables = @(
             @{ Path = 'z:\notfound\file.txt'; Name = '*' },
             @{ Path = $null; Name = '*' },

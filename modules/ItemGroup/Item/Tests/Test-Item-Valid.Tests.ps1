@@ -58,8 +58,14 @@ Describe 'Test-Item-Valid' {
             Mock -CommandName Test-Path -MockWith { $false <# assumes every path is invalid #> }
             Test-Item -Item @(@{ Path = 'a:\notfound\file.txt' }, [PSCustomObject]@{ Path = 'a:\notfound\file.txt' }) -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
-         It 'Is true when Item has a valid Path property and no Name property.' {
+         It 'Is false when Item has a valid Path property that references a folder but has no Name property.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every path is valid #> }
+            Mock -CommandName Get-Item -MockWith { [PSCustomObject]@{ PSIsContainer = $true } }
+            Test-Item -Item @(@{ Path = 'a:\folder' }, [PSCustomObject]@{ Path = 'a:\folder' }) -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
+         }
+         It 'Is true when Item has a valid Path property that references a file but has no Name property.' {
+            Mock -CommandName Test-Path -MockWith { $true <# assumes every path is valid #> }
+            Mock -CommandName Get-Item -MockWith { [PSCustomObject]@{ PSIsContainer = $false } }
             Test-Item -Item @(@{ Path = 'a:\folder\file.txt' }, [PSCustomObject]@{ Path = 'a:\folder\file.txt' }) -Valid | Should -Be ($true, $true)
          }
          It 'Is false when Item.Path is invalid although Item.Name is non-null because Path has precedence.' {
@@ -68,6 +74,7 @@ Describe 'Test-Item-Valid' {
          }
          It 'Is true when Item.Path is valid although Item.Name is null because Path has precedence.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every path is valid #> }
+            Mock -CommandName Get-Item -MockWith { [PSCustomObject]@{ PSIsContainer = $false } }
             Test-Item -Item @(@{ Path = 'a:\folder\file.txt' ; Name = $null }, [PSCustomObject]@{ Path = 'a:\folder\file.txt' ; Name = $null }) -Valid | Should -Be ($true, $true)
          }
       }
@@ -89,8 +96,14 @@ Describe 'Test-Item-Valid' {
             Mock -CommandName Test-Path -MockWith { $false <# assumes every path is invalid #> }
             @(@{ Path = 'a:\notfound\file.txt' }, [PSCustomObject]@{ Path = 'a:\notfound\file.txt' }) | Test-Item -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
          }
-         It 'Is true when Item has a valid Path property and no Name property.' {
+         It 'Is false when Item has a valid Path property that references a folder but has no Name property.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every path is valid #> }
+            Mock -CommandName Get-Item -MockWith { [PSCustomObject]@{ PSIsContainer = $true } }
+            @(@{ Path = 'a:\folder' }, [PSCustomObject]@{ Path = 'a:\folder' }) | Test-Item -Valid -WarningAction SilentlyContinue | Should -Be ($false, $false)
+         }
+         It 'Is true when Item has a valid Path property that references a file but has no Name property.' {
+            Mock -CommandName Test-Path -MockWith { $true <# assumes every path is valid #> }
+            Mock -CommandName Get-Item -MockWith { [PSCustomObject]@{ PSIsContainer = $false } }
             @(@{ Path = 'a:\folder\file.txt' }, [PSCustomObject]@{ Path = 'a:\folder\file.txt' }) | Test-Item -Valid | Should -Be ($true, $true)
          }
          It 'Is false when Item.Path is invalid although Item.Name is non-null because Path has precedence.' {
@@ -99,6 +112,7 @@ Describe 'Test-Item-Valid' {
          }
          It 'Is true when Item.Path is valid although Item.Name is null because Path has precedence.' {
             Mock -CommandName Test-Path -MockWith { $true <# assumes every path is valid #> }
+            Mock -CommandName Get-Item -MockWith { [PSCustomObject]@{ PSIsContainer = $false } }
             @(@{ Path = 'a:\folder\file.txt' ; Name = $null }, [PSCustomObject]@{ Path = 'a:\folder\file.txt' ; Name = $null }) | Test-Item -Valid | Should -Be ($true, $true)
          }
       }

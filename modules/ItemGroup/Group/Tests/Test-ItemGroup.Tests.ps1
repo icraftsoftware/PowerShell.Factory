@@ -106,7 +106,7 @@ Describe 'Test-ItemGroup' {
       }
 
       Context 'Warns about each duplicate ItemGroup' {
-         Mock -Command Write-Warning
+         Mock -CommandName Write-Warning
          It 'warns about each duplicate ItemGroup.' {
             $itemGroup = @(
                @{ One = @( @{ Name = 'one' } ) }, @{ One = @( @{ Name = 'two' } ) }
@@ -130,7 +130,7 @@ Describe 'Test-ItemGroup' {
       }
 
       Context 'Warns about each duplicate Item' {
-         Mock -Command Write-Warning -ModuleName Item
+         Mock -CommandName Write-Warning -ModuleName Item
          It 'warns about each duplicate Item.' {
             $itemGroup = @(
                @{ One = @( @{ Name = 'one' } ) }

@@ -201,7 +201,9 @@ function Test-Item {
                     if (Test-Item -Item $currentItem -WellFormed) {
                         # Path property has the precedence over the Name property, but either one is required
                         if (Test-Item -Item $currentItem -Property Path) {
-                            $isValid = $null -ne $currentItem.Path -and (Test-Path $currentItem.Path)
+                            if ($null -ne $currentItem.Path -and (Test-Path -Path $currentItem.Path)) {
+                                $isValid = -not(Get-Item -Path $currentItem.Path | Select-Object -ExpandProperty PSIsContainer)
+                            }
                         }
                         elseif (Test-Item -Item $currentItem -Property Name) {
                             $isValid = -not([string]::IsNullOrWhitespace($currentItem.Name))
