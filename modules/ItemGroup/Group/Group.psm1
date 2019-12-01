@@ -114,7 +114,6 @@ function Expand-ItemGroup {
 }
 
 function Import-ItemGroup {
-    # load item groups files
     [CmdletBinding()]
     [OutputType([hashtable])]
     param(
@@ -124,20 +123,20 @@ function Import-ItemGroup {
         $Path
     )
     dynamicparam {
-        # resolve path to itemgroup file when invoked through 'Get-Help -Name Import-ItemGroup -Path <some item group file.psd1>' as well
+        # resolve path to ItemGroup file when invoked through 'Get-Help -Name Import-ItemGroup -Path <ItemGroup.psd1>' as well
         if (-not(Test-Path -Path Variable:Path)) {
-            # $Path = Get-PSCallStack | Select-Object -Last 1 -ExpandProperty Position | Select-Object -ExpandProperty Text |
             $Path = Get-PSCallStack |
-                Select-Object -Last 1 -ExpandProperty InvocationInfo |
-                Select-Object -ExpandProperty MyCommand |
-                Where-Object -FilterScript { $_ -match '^Get\-Help\s+(:?\-Name\s+)?Import\-ItemGroup\s+\-Path\s+''?([^\s'']+)''?.*$' } |
-                ForEach-Object -Process { $Matches[2] }
+                Select-Object -Last 1 -ExpandProperty Position |
+                Select-Object -ExpandProperty Text |
+                Where-Object -FilterScript { $_ -match '^Get\-Help\s+(:?\-Name\s+)?Import\-ItemGroup\s+(:?\-Path\s+)''?(?<Path>[^\s'']+)''?.*$' } |
+                ForEach-Object -Process { $Matches.Path }
         }
-        # $Path is mandatory but could be $null when invoked through 'Get-Help -Name Import-ItemGroup'
-        if (![string]::IsNullOrEmpty($Path)) {
-            $source = Get-Content -Raw -Path $Path
-            $scriptBlock = [scriptblock]::Create($source)
-            Convert-ScriptBlockParametersToDynamicParameters -ScriptBlock $scriptBlock
+        if ($null -ne $Path -and (Test-Path -Path $Path)) {
+            if (-not(Get-Item -Path $Path | Select-Object -ExpandProperty PSIsContainer)) {
+                $source = Get-Content -Raw -Path $Path
+                $scriptBlock = [scriptblock]::Create($source)
+                Convert-ScriptBlockParametersToDynamicParameters -ScriptBlock $scriptBlock
+            }
         }
     }
     begin {
@@ -146,20 +145,27 @@ function Import-ItemGroup {
     process {
         $absolutePath = Resolve-Path -Path $Path
         Write-Information -MessageData "Importing ItemGroups from file '$absolutePath'."
-        # make sure current folder for each item group definition file is its containing folder
+        # make sure current folder for each ItemGroup definition file is its containing folder
         $itemGroupFolderPath = Split-Path -Path $absolutePath -Parent
         Write-Verbose -Message "Setting location to '$itemGroupFolderPath'."
-        Set-Location -Path $itemGroupFolderPath
+        Push-Location -Path $itemGroupFolderPath
 
-        $itemGroups = Invoke-ScriptBlock -ScriptBlock $scriptBlock -Parameters $PSBoundParameters
         ## TODO enrich hashtable with source file to provide better diagnostics info
-        # pipe ItemGroups to support array of hashtables and not just a single hashtable
-        $itemGroups | ForEach-Object -Process { if ($_ -isnot [hashtable]) { throw "File '$absolutePath' does not contain valid ItemGroup definitions." } }
-        $itemGroups
+        Invoke-ScriptBlock -ScriptBlock $scriptBlock -Parameters $PSBoundParameters |
+            <# pipe ItemGroups to support array of hashtables and not just a single hashtable #>
+            ForEach-Object -Process {
+                if ($_ -isnot [hashtable]) {
+                    throw "File '$absolutePath' does not contain valid HashTable ItemGroup definitions."
+                }
+                else {
+                    $_
+                }
+            }
+        Pop-Location
     }
     end {
-        Set-Location -Path $location
         Write-Verbose -Message "Restoring initial location to '$location'."
+        Set-Location -Path $location
     }
 }
 
