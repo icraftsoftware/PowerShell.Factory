@@ -40,11 +40,10 @@ function Get-CommandAlias {
         $Command
     )
 
-    $cmd = Get-Command $Command
-    if ($null -ne $cmd) {
-        if ($cmd.CommandType -eq "alias") {
-            $cmd = $cmd.Definition
-        }
-        @(Get-Command $cmd) + @(Get-Alias -Definition $cmd -errorAction SilentlyContinue | Sort-Object)
+    Get-Command -Name $Command | ForEach-Object -Process {
+        if ($_.CommandType -eq 'Alias') { $_.Definition } else { $_.Name }
+    } | ForEach-Object -Process {
+        Get-Command -Name $_
+        Get-Alias -Definition $_ -ErrorAction SilentlyContinue | Sort-Object
     }
 }
