@@ -194,14 +194,16 @@ function Add-TeamFoundationClientAssemblies {
     [CmdletBinding()]
     param()
 
-    $vswherePath = Split-Path -Parent (Get-VSSetupInstance | Select-VSSetupInstance -Latest).Properties['SetupEngineFilePath']
     $paths = @(
         # https://github.com/microsoft/vswhere/issues/189
-        # https://github.com/microsoft/vssetup.powershell/issues/52
-        # Get-VSSetupInstance | Select-VSSetupInstance -Require Microsoft.VisualStudio.TestTools.TeamFoundationClient -Latest
-        # see https://github.com/microsoft/vssetup.powershell/issues/52#issuecomment-533813553
-        & "$vswherePath\vswhere.exe" -latest -requires Microsoft.VisualStudio.TestTools.TeamFoundationClient -find **\TeamFoundation\**\Microsoft.TeamFoundation.Client.dll
-        & "$vswherePath\vswhere.exe" -latest -requires Microsoft.VisualStudio.TestTools.TeamFoundationClient -find **\TeamFoundation\**\Microsoft.TeamFoundation.VersionControl.Client.dll
+        # https://github.com/microsoft/vssetup.powershell/issues/52#issuecomment-533813553
+        Get-VSSetupInstance |
+            Select-VSSetupInstance -Require Microsoft.VisualStudio.TeamExplorer -Latest |
+            Get-ChildItem -Recurse -Filter TeamFoundation -Directory |
+            Convert-Path <# do not return FileInfo objects but only the paths #> |
+            Join-Path -ChildPath * <# ensure -Path parameter has a trailing * as it is needed when -Include parameter is used #> |
+            Get-ChildItem -Recurse -Include Microsoft.TeamFoundation.Client.dll, Microsoft.TeamFoundation.VersionControl.Client.dll |
+            Convert-Path <# do not return FileInfo objects but only the paths #>
     )
     if ($paths | Test-Any) {
         $paths | ForEach-Object -Process { Add-Type -LiteralPath $_ }
